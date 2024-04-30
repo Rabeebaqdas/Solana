@@ -23,15 +23,49 @@ describe("calculator", () => {
     );
     assert.ok(account.greeting === "Welcome to solana");
   });
-  // it("Add two numbers", async () => {
-  //   await program.rpc.add(new anchor.BN(2), new anchor.BN(3), {
-  //     accounts: {
-  //       calculator: calculator.publicKey,
-  //     },
-  //   });
-  //   const account = await program.account.calculator.fetch(
-  //     calculator.publicKey
-  //   );
-  //   assert.ok(account.result.eq(new anchor.BN(5)));
-  // });
+  it("Add two numbers", async () => {
+    await program.rpc.add(new anchor.BN(2), new anchor.BN(3), {
+      accounts: {
+        calculator: calculator.publicKey,
+      },
+    });
+    const account = await program.account.calculator.fetch(
+      calculator.publicKey
+    );
+    assert.ok(account.result.eq(new anchor.BN(5)));
+  });
+  it("Subtract two numbers", async () => {
+    await program.rpc.sub(new anchor.BN(10), new anchor.BN(3), {
+      accounts: {
+        calculator: calculator.publicKey,
+      },
+    });
+    const account = await program.account.calculator.fetch(
+      calculator.publicKey
+    );
+    assert.ok(account.result.eq(new anchor.BN(7)));
+  });
+  it("Multiple two numbers", async () => {
+    await program.rpc.mul(new anchor.BN(10), new anchor.BN(3), {
+      accounts: {
+        calculator: calculator.publicKey,
+      },
+    });
+    const account = await program.account.calculator.fetch(
+      calculator.publicKey
+    );
+    assert.ok(account.result.eq(new anchor.BN(30)));
+  });
+  it("Divide two numbers", async () => {
+    await program.rpc.div(new anchor.BN(10), new anchor.BN(3), {
+      accounts: {
+        calculator: calculator.publicKey,
+      },
+    });
+    const account = await program.account.calculator.fetch(
+      calculator.publicKey
+    );
+    assert.ok(account.result.eq(new anchor.BN(3)));
+    assert.ok(account.remainder.eq(new anchor.BN(1)));
+  });
 });
