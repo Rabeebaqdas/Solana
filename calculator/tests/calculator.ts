@@ -35,7 +35,7 @@ describe("calculator", () => {
     assert.ok(account.result.eq(new anchor.BN(5)));
   });
   it("Subtract two numbers", async () => {
-    await program.rpc.sub(new anchor.BN(10), new anchor.BN(3), {
+    await program.rpc.sub(new anchor.BN(10), new anchor.BN(11), {
       accounts: {
         calculator: calculator.publicKey,
       },
@@ -43,7 +43,7 @@ describe("calculator", () => {
     const account = await program.account.calculator.fetch(
       calculator.publicKey
     );
-    assert.ok(account.result.eq(new anchor.BN(7)));
+    assert.ok(account.result.eq(new anchor.BN(-1)));
   });
   it("Multiple two numbers", async () => {
     await program.rpc.mul(new anchor.BN(10), new anchor.BN(3), {
