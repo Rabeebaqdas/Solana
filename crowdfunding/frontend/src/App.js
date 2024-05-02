@@ -23,7 +23,6 @@ function App() {
   const [campaigns, setCampaigns] = useState([]);
 
   const getProvider = () => {
-    //Creating a provider, the provider is authenication connection to solana
     const connection = new Connection(network, opts.preflightCommitment);
     const provider = new AnchorProvider(
       connection,
@@ -54,25 +53,6 @@ function App() {
     } catch (err) {
       console.log(err.message);
       throw new Error("No solana object");
-    }
-  };
-
-  const getCompaigns = async () => {
-    try {
-      const connection = new Connection(network, opts.preflightCommitment);
-      const provider = getProvider();
-
-      const program = new Program(idl, programID, provider);
-      Promise.all(
-        (await connection.getProgramAccounts(programID)).map(
-          async (campaign) => ({
-            ...(await program.account.campaign.fetch(campaign.pubkey)),
-            pubkey: campaign.pubkey,
-          })
-        )
-      ).then((campaign) => setCampaigns(campaign));
-    } catch (err) {
-      console.log(err);
     }
   };
 
@@ -135,6 +115,25 @@ function App() {
     try {
     } catch (err) {
       console.log(err.message);
+    }
+  };
+
+  const getCompaigns = async () => {
+    try {
+      const connection = new Connection(network, opts.preflightCommitment);
+      const provider = getProvider();
+
+      const program = new Program(idl, programID, provider);
+      Promise.all(
+        (await connection.getProgramAccounts(programID)).map(
+          async (campaign) => ({
+            ...(await program.account.campaign.fetch(campaign.pubkey)),
+            pubkey: campaign.pubkey,
+          })
+        )
+      ).then((campaign) => setCampaigns(campaign));
+    } catch (err) {
+      console.log(err);
     }
   };
 
