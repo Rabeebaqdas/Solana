@@ -2,7 +2,13 @@ import "./App.css";
 import { useEffect, useState } from "react";
 import idl from "./utils/idl.json";
 import { Connection, PublicKey, clusterApiUrl } from "@solana/web3.js";
-import { Program, AnchorProvider, web3, utils } from "@project-serum/anchor";
+import {
+  Program,
+  AnchorProvider,
+  web3,
+  utils,
+  BN,
+} from "@project-serum/anchor";
 import { Buffer } from "buffer";
 window.Buffer = Buffer;
 const { solana } = window;
@@ -95,6 +101,25 @@ function App() {
     }
   };
 
+  const donate = async (publicKey, amount) => {
+    try {
+      const provider = getProvider();
+
+      const program = new Program(idl, programID, provider);
+      await program.rpc.donate(new BN(amount * web3.LAMPORTS_PER_SOL), {
+        accounts: {
+          campaign: publicKey,
+          user: provider.wallet.publicKey,
+          systemProgram: SystemProgram.programId,
+        },
+      });
+      console.log("Money Donated to", publicKey.toString());
+      getCompaigns();
+    } catch (err) {
+      console.log(err.message);
+    }
+  };
+
   useEffect(() => {
     if (solana) {
       const onLoad = async () => {
@@ -114,6 +139,7 @@ function App() {
       <br />
       <button onClick={createCompaign}>Create Compaign</button>
       <button onClick={getCompaigns}>Get Compaigns List</button>
+      <button onClick={() => donate(idl.address, 0.2)}>Donate</button>
 
       <br />
       {campaigns.map((campaign) => (
