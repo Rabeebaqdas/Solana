@@ -23,7 +23,7 @@ pub mod crowdfunding {
             &ctx.accounts.campaign.key(),
             amount,
         );
-        anchor_lang::solana_program::program::invoke(
+       let _ =  anchor_lang::solana_program::program::invoke(
             &ix,
             &[
                 ctx.accounts.user.to_account_info(),
