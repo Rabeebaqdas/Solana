@@ -120,6 +120,24 @@ function App() {
     }
   };
 
+  const withdraw = async (publicKey, amount) => {
+    const provider = getProvider();
+
+    const program = new Program(idl, programID, provider);
+    await program.rpc.withdraw(new BN(amount * web3.LAMPORTS_PER_SOL), {
+      accounts: {
+        campaign: publicKey,
+        user: provider.wallet.publicKey,
+      },
+    });
+    console.log("Money transfered Successfully", publicKey.toString());
+
+    try {
+    } catch (err) {
+      console.log(err.message);
+    }
+  };
+
   useEffect(() => {
     if (solana) {
       const onLoad = async () => {
@@ -139,7 +157,6 @@ function App() {
       <br />
       <button onClick={createCompaign}>Create Compaign</button>
       <button onClick={getCompaigns}>Get Compaigns List</button>
-      <button onClick={() => donate(idl.address, 0.2)}>Donate</button>
 
       <br />
       {campaigns.map((campaign) => (
@@ -151,6 +168,12 @@ function App() {
             Amount Donated:{" "}
             {(campaign.amountDonated / web3.LAMPORTS_PER_SOL).toString()}
           </p>
+          <button onClick={() => donate(campaign.pubkey, 0.2)}>
+            Donate In Compaign
+          </button>
+          <button onClick={() => withdraw(campaign.pubkey, 0.2)}>
+            Withdraw Donations
+          </button>
           <br />
         </>
       ))}
