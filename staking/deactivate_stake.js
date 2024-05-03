@@ -60,6 +60,21 @@ const main = async () => {
   );
   stakeStatus = await connection.getStakeActivation(stakeAccount.publicKey);
   console.log("Stake Account Status After", stakeStatus.state);
+
+  const deactivateTx = StakeProgram.deactivate({
+    stakePubkey: stakeAccount.publicKey,
+    authorizedPubkey: wallet.publicKey,
+  });
+
+  const deactivateTxId = await sendAndConfirmTransaction(
+    connection,
+    deactivateTx,
+    [wallet]
+  );
+  console.log(`Stake Account Deactivated. Tx Id: ${deactivateTxId}`);
+
+  stakeStatus = await connection.getStakeActivation(stakeAccount.publicKey);
+  console.log("Stake Account Status After", stakeStatus.state);
 };
 
 const runMain = async () => {

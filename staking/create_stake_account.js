@@ -40,8 +40,10 @@ const main = async () => {
   console.log("Stake Account created. Tx Id : ", createStakeAccountTxId);
   const stakeBalance = await connection.getBalance(stakeAccount.publicKey);
   console.log("Stake Account Balance", stakeBalance / LAMPORTS_PER_SOL);
-  const stakeStatus = await connection.getStakeActivation(stakeAccount.publicKey);
-  console.log("Stake Account Status", stakeStatus);
+  const stakeStatus = await connection.getStakeActivation(
+    stakeAccount.publicKey
+  );
+  console.log("Stake Account Status", stakeStatus.state);
 };
 const runMain = async () => {
   try {
