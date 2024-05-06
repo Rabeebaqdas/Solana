@@ -8,10 +8,13 @@ const TWITTER_LINK = `https://twitter.com/${TWITTER_HANDLE}`;
 const { solana } = window;
 const App = () => {
   const [currentAccount, setCurrentAccount] = useState("");
+  const [inputVal, setInputVal] = useState("");
+  const [userGif, setUserGif] = useState([]);
+
   const test_gif = [
     "https://i.gifer.com/kkd.gif",
     "https://i.gifer.com/XjD.gif",
-    "https://i.gifer.com/7V7m.gif",
+    "https://i.gifer.com/7V7m.gif"
   ];
   // const getProvider = () => {
   //   const connection = new Connection(network, opts.preflightCommitment);
@@ -46,6 +49,11 @@ const App = () => {
       throw new Error("No solana object");
     }
   };
+  const sendGif = async () => {
+    console.log(inputVal);
+    setUserGif([...userGif, inputVal]);
+    setInputVal("");
+  };
 
   useEffect(() => {
     if (solana) {
@@ -58,6 +66,12 @@ const App = () => {
       };
     }
   }, []);
+  useEffect(() => {
+    if (currentAccount) {
+      console.log("Fetching GIF List...");
+      setUserGif(test_gif);
+    }
+  }, [currentAccount]);
 
   return (
     <div className="App">
@@ -67,6 +81,7 @@ const App = () => {
           <p className="sub-text">
             View your GIF collection in the metaverse ✨
           </p>
+
           {!currentAccount ? (
             <button
               className="cta-button connect-wallet-button"
@@ -76,8 +91,29 @@ const App = () => {
             </button>
           ) : (
             <div className="connected-container">
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  sendGif();
+                }}
+              >
+                <input
+                  type="text"
+                  className="search-input"
+                  placeholder="Enter GIFs link!"
+                  value={inputVal}
+                  onChange={(e) => setInputVal(e.target.value)}
+                />
+                <button
+                  type="submit"
+                  className="cta-button submit-gif-button"
+                  disabled={inputVal == ""}
+                >
+                  Submit
+                </button>
+              </form>
               <div className="gif-grid">
-                {test_gif.map((gif) => (
+                {userGif.map((gif) => (
                   <div className="gif-item" key={gif}>
                     <img alt="gif" src={gif} />
                   </div>
