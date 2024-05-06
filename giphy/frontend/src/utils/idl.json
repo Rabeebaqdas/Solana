@@ -1,0 +1,126 @@
+{
+    "address": "AsJfSnJ1TVRw5CNcC7StpBWNdiz7krfMxFyMaQGWjKnz",
+    "metadata": {
+      "name": "gifportal",
+      "version": "0.1.0",
+      "spec": "0.1.0",
+      "description": "Created with Anchor"
+    },
+    "instructions": [
+      {
+        "name": "add_gif",
+        "discriminator": [
+          171,
+          74,
+          141,
+          100,
+          33,
+          70,
+          87,
+          155
+        ],
+        "accounts": [
+          {
+            "name": "base_account",
+            "writable": true
+          },
+          {
+            "name": "user",
+            "writable": true,
+            "signer": true
+          }
+        ],
+        "args": [
+          {
+            "name": "gif_link",
+            "type": "string"
+          }
+        ]
+      },
+      {
+        "name": "start_stuff_off",
+        "discriminator": [
+          126,
+          54,
+          85,
+          33,
+          226,
+          32,
+          195,
+          32
+        ],
+        "accounts": [
+          {
+            "name": "base_account",
+            "writable": true,
+            "signer": true
+          },
+          {
+            "name": "user",
+            "writable": true,
+            "signer": true
+          },
+          {
+            "name": "system_program",
+            "address": "11111111111111111111111111111111"
+          }
+        ],
+        "args": []
+      }
+    ],
+    "accounts": [
+      {
+        "name": "BaseAccount",
+        "discriminator": [
+          16,
+          90,
+          130,
+          242,
+          159,
+          10,
+          232,
+          133
+        ]
+      }
+    ],
+    "types": [
+      {
+        "name": "BaseAccount",
+        "type": {
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "total_gifs",
+              "type": "u64"
+            },
+            {
+              "name": "gif_list",
+              "type": {
+                "vec": {
+                  "defined": {
+                    "name": "ItemStruct"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "ItemStruct",
+        "type": {
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "gif_link",
+              "type": "string"
+            },
+            {
+              "name": "user_address",
+              "type": "pubkey"
+            }
+          ]
+        }
+      }
+    ]
+  }
