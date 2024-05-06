@@ -30,7 +30,7 @@ describe("Giphy", async () => {
       },
     });
     const account = await program.account.baseAccount.fetch(giphy.publicKey);
-    console.log("Gif List", account.gifList);
+    // console.log("Gif List", account.gifList);
     assert.ok(account.totalGifs.eq(new anchor.BN(1)));
   });
 });

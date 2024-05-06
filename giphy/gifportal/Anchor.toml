@@ -4,14 +4,16 @@
 resolution = true
 skip-lint = false
 
-[programs.localnet]
+#when deploy on devnet change the localnet into devnet
+[programs.devnet]
 gifportal = "AsJfSnJ1TVRw5CNcC7StpBWNdiz7krfMxFyMaQGWjKnz"
 
 [registry]
 url = "https://api.apr.dev"
 
+#when deploy on devnet change the localnet into devnet in the cluster
 [provider]
-cluster = "Localnet"
+cluster = "Devnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
