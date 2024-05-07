@@ -68,6 +68,7 @@ const App = () => {
       throw new Error("No solana object");
     }
   };
+
   const sendGif = async () => {
     try {
       const provider = getProvider();
@@ -117,7 +118,7 @@ const App = () => {
       console.log(err.message);
     }
   };
-  
+
   const getGifList = async () => {
     try {
       const provider = getProvider();
