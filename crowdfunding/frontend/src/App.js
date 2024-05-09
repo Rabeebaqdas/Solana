@@ -101,18 +101,17 @@ function App() {
   };
 
   const withdraw = async (publicKey, amount) => {
-    const provider = getProvider();
-
-    const program = new Program(idl, programID, provider);
-    await program.rpc.withdraw(new BN(amount * web3.LAMPORTS_PER_SOL), {
-      accounts: {
-        campaign: publicKey,
-        user: provider.wallet.publicKey,
-      },
-    });
-    console.log("Money transfered Successfully", publicKey.toString());
-
     try {
+      const provider = getProvider();
+
+      const program = new Program(idl, programID, provider);
+      await program.rpc.withdraw(new BN(amount * web3.LAMPORTS_PER_SOL), {
+        accounts: {
+          campaign: publicKey,
+          user: provider.wallet.publicKey,
+        },
+      });
+      console.log("Money transfered Successfully", publicKey.toString());
     } catch (err) {
       console.log(err.message);
     }
