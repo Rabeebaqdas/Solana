@@ -29,11 +29,6 @@ const App = () => {
   const [userGif, setUserGif] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // const test_gif = [
-  //   "https://i.gifer.com/kkd.gif",
-  //   "https://i.gifer.com/XjD.gif",
-  //   "https://i.gifer.com/7V7m.gif",
-  // ];
   const getProvider = () => {
     const connection = new Connection(network, opts.preflightCommitment);
     const provider = new AnchorProvider(
@@ -133,7 +128,6 @@ const App = () => {
       const account = await program.account.baseAccount.fetch(
         baseAccount.publicKey
       );
-      console.log(account.gifList, "rabeb");
       setUserGif(account.gifList);
     } catch (err) {
       console.log(err.message);
