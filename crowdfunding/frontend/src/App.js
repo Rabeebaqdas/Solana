@@ -12,7 +12,7 @@ import {
 import { Buffer } from "buffer";
 window.Buffer = Buffer;
 const { solana } = window;
-const programID = new PublicKey(idl.address);
+const programID = new PublicKey("57gCHHkhU7GdkXx1DybsMEkCGEULC2ojx7wr5bykKaeV");
 const network = clusterApiUrl("devnet");
 const opts = {
   preflightCommitment: "processed",

@@ -1,63 +1,25 @@
+
 {
-  "address": "57gCHHkhU7GdkXx1DybsMEkCGEULC2ojx7wr5bykKaeV",
-  "metadata": {
-    "name": "crowdfunding",
-    "version": "0.1.0",
-    "spec": "0.1.0",
-    "description": "Created with Anchor"
-  },
+  "version": "0.1.0",
+  "name": "crowdfunding",
   "instructions": [
     {
       "name": "create",
-      "discriminator": [
-        24,
-        30,
-        200,
-        40,
-        5,
-        28,
-        7,
-        119
-      ],
       "accounts": [
         {
           "name": "campaign",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  67,
-                  65,
-                  77,
-                  80,
-                  65,
-                  73,
-                  71,
-                  78,
-                  95,
-                  68,
-                  69,
-                  77,
-                  79
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "user"
-              }
-            ]
-          }
+          "isMut": true,
+          "isSigner": false
         },
         {
           "name": "user",
-          "writable": true,
-          "signer": true
+          "isMut": true,
+          "isSigner": true
         },
         {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
         }
       ],
       "args": [
@@ -73,29 +35,21 @@
     },
     {
       "name": "donate",
-      "discriminator": [
-        121,
-        186,
-        218,
-        211,
-        73,
-        70,
-        196,
-        180
-      ],
       "accounts": [
         {
           "name": "campaign",
-          "writable": true
+          "isMut": true,
+          "isSigner": false
         },
         {
           "name": "user",
-          "writable": true,
-          "signer": true
+          "isMut": true,
+          "isSigner": true
         },
         {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
         }
       ],
       "args": [
@@ -107,25 +61,16 @@
     },
     {
       "name": "withdraw",
-      "discriminator": [
-        183,
-        18,
-        70,
-        156,
-        148,
-        109,
-        161,
-        34
-      ],
       "accounts": [
         {
           "name": "campaign",
-          "writable": true
+          "isMut": true,
+          "isSigner": false
         },
         {
           "name": "user",
-          "writable": true,
-          "signer": true
+          "isMut": true,
+          "isSigner": true
         }
       ],
       "args": [
@@ -139,27 +84,12 @@
   "accounts": [
     {
       "name": "Campaign",
-      "discriminator": [
-        50,
-        40,
-        49,
-        11,
-        157,
-        220,
-        229,
-        192
-      ]
-    }
-  ],
-  "types": [
-    {
-      "name": "Campaign",
       "type": {
         "kind": "struct",
         "fields": [
           {
             "name": "admin",
-            "type": "pubkey"
+            "type": "publicKey"
           },
           {
             "name": "name",
@@ -170,7 +100,7 @@
             "type": "string"
           },
           {
-            "name": "amount_donated",
+            "name": "amountDonated",
             "type": "u64"
           }
         ]

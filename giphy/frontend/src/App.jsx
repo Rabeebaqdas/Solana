@@ -18,10 +18,8 @@ window.Buffer = Buffer;
 const arr = Object.values(kp._keypair.secretKey);
 const secret = new Uint8Array(arr);
 let baseAccount = Keypair.fromSecretKey(secret);
-const programID = new PublicKey(idl.address);
+const programID = new PublicKey("AsJfSnJ1TVRw5CNcC7StpBWNdiz7krfMxFyMaQGWjKnz");
 const network = clusterApiUrl("devnet");
-const TWITTER_HANDLE = "_buildspace";
-const TWITTER_LINK = `https://twitter.com/${TWITTER_HANDLE}`;
 const opts = {
   preflightCommitment: "processed",
 };
@@ -29,6 +27,7 @@ const App = () => {
   const [currentAccount, setCurrentAccount] = useState("");
   const [inputVal, setInputVal] = useState("");
   const [userGif, setUserGif] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   // const test_gif = [
   //   "https://i.gifer.com/kkd.gif",
@@ -39,7 +38,7 @@ const App = () => {
     const connection = new Connection(network, opts.preflightCommitment);
     const provider = new AnchorProvider(
       connection,
-      currentAccount,
+      solana,
       opts.preflightCommitment
     );
     return provider;
@@ -60,17 +59,21 @@ const App = () => {
 
   const connectWallet = async () => {
     try {
+      setLoading(true);
       if (!solana) return alert("Please install Metamask");
       const response = await solana.connect();
       setCurrentAccount(response.publicKey.toString());
     } catch (err) {
       console.log(err.message);
       throw new Error("No solana object");
+    } finally {
+      setLoading(false);
     }
   };
 
   const sendGif = async () => {
     try {
+      setLoading(true);
       const provider = getProvider();
       const program = new Program(idl, programID, provider);
       await program.rpc.addGif(inputVal, {
@@ -83,6 +86,8 @@ const App = () => {
       setInputVal("");
     } catch (err) {
       console.log(err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -100,8 +105,8 @@ const App = () => {
 
   const createGifAccount = async () => {
     try {
+      setLoading(true);
       const provider = getProvider();
-
       const program = new Program(idl, programID, provider);
       await program.rpc.startStuffOff({
         accounts: {
@@ -116,6 +121,8 @@ const App = () => {
       await getGifList();
     } catch (err) {
       console.log(err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -126,8 +133,8 @@ const App = () => {
       const account = await program.account.baseAccount.fetch(
         baseAccount.publicKey
       );
-      console.log(account, "rabeb");
-      setUserGif(account.gitList);
+      console.log(account.gifList, "rabeb");
+      setUserGif(account.gifList);
     } catch (err) {
       console.log(err.message);
       setUserGif("");
@@ -153,6 +160,7 @@ const App = () => {
             <button
               className="cta-button connect-wallet-button"
               onClick={connectWallet}
+              disabled={loading}
             >
               Connect Wallet
             </button>
@@ -161,6 +169,7 @@ const App = () => {
               <button
                 className="cta-button submit-gif-button"
                 onClick={createGifAccount}
+                disabled={loading}
               >
                 Do One-Time Initialization for GIF Program Account
               </button>
@@ -178,12 +187,13 @@ const App = () => {
                   className="search-input"
                   placeholder="Enter GIFs link!"
                   value={inputVal}
+                  disabled={loading}
                   onChange={(e) => setInputVal(e.target.value)}
                 />
                 <button
                   type="submit"
                   className="cta-button submit-gif-button"
-                  disabled={inputVal == ""}
+                  disabled={inputVal == "" || loading}
                 >
                   Submit
                 </button>
@@ -192,7 +202,7 @@ const App = () => {
                 {userGif &&
                   userGif.map((item, index) => (
                     <div className="gif-item" key={index}>
-                      <img alt="gif" src={item} />
+                      <img alt="gif" src={item.gifLink} />
                     </div>
                   ))}
               </div>
@@ -202,12 +212,7 @@ const App = () => {
 
         <div className="footer-container">
           <img alt="Twitter Logo" className="twitter-logo" src={twitterLogo} />
-          <a
-            className="footer-text"
-            href={TWITTER_LINK}
-            target="_blank"
-            rel="noreferrer"
-          >{`Adapted from @${TWITTER_HANDLE}`}</a>
+          <p className="footer-text">Developed by Rabeeb Aqdas Jilani</p>
         </div>
       </div>
     </div>
