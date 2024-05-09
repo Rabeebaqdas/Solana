@@ -141,6 +141,7 @@ const App = () => {
       getGifList();
     }
   }, [currentAccount]);
+  
   return (
     <div className="App">
       <div className="container">
