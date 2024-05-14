@@ -1,5 +1,7 @@
 use anchor_lang::prelude::*;
-
+use anchor_spl :: {
+    token:: {self, Mint, Token, TokenAccount}
+};
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
 pub mod constants {
@@ -32,7 +34,7 @@ pub struct Initialize<'info> {
 
     )]
     pub token_vault_account: Account<'info, TokenAccount>,
-    pub mint: Account<'info, MintAccount>,
+    pub mint: Account<'info, Mint>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }
