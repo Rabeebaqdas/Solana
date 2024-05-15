@@ -1,8 +1,10 @@
 use anchor_lang::prelude::*;
 use anchor_spl :: {
     associated_token::AssociatedToken,
-    token:: {self, Mint, Token, TokenAccount}
+    token:: {self, Mint, Token, TokenAccount, Transfer, transfer}
 };
+use solana_program::clock::Clock;
+
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
 pub mod constants {
@@ -13,9 +15,42 @@ pub mod constants {
 
 #[program]
 pub mod token_staking {
+  
+
     use super::*;
 
-    pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
+    pub fn initialize(_ctx: Context<Initialize>) -> Result<()> {
+        Ok(())
+    }
+
+    pub fn stake(ctx: Context<Stake>, amount:u64) -> Result<()> {
+        let stake_info = &mut ctx.accounts.stake_info_account;
+        if stake_info.is_staked {
+            return Err(ErrorCode::IsStaked.into());
+        }
+        if amount <= 0 {
+            return Err(ErrorCode::NoTokens.into());
+        }
+
+        let clock = Clock::get()?;
+        stake_info.staked_at_slot = clock.slot;
+        stake_info.is_staked = true;
+
+        //to add the decimals in the input amount
+        // let stake_amount = (amount).checked_mul(10u64.pow(ctx.accounts.mint.decimals as u32)).unwrap();
+
+        transfer(
+            CpiContext::new(
+                ctx.accounts.token_program.to_account_info(),
+                Transfer {
+                    from : ctx.accounts.user_token_account.to_account_info(),
+                    to: ctx.accounts.stake_account.to_account_info(),
+                    authority: ctx.accounts.signer.to_account_info(),
+                }
+            ),
+            amount
+        )?;
+
         Ok(())
     }
 }
@@ -49,11 +84,9 @@ pub struct Stake<'info> {
         seeds = [constants::STAKE_INFO_SEED, signer.key.as_ref()],
         bump,
         payer = signer, 
-        token::mint = mint,
-        token::authority = stake_info_account,
-
+        space = 8 + std::mem::size_of::<StakeInfo>()
     )]
-    pub stake_info_account: Account<'info, TokenAccount>,
+    pub stake_info_account: Account<'info, StakeInfo>,
 
     #[account(
         init_if_needed,
@@ -81,7 +114,7 @@ pub struct Stake<'info> {
 
 #[account] 
 pub struct StakeInfo {
-    pub amount: u64,
+    pub staked_at_slot: u64,
     pub is_staked : bool
 
 }
