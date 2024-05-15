@@ -2,14 +2,19 @@
 seeds = false
 skip-lint = false
 [programs.localnet]
-token_staking = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
+token_staking = "7XFbaKsugiPV3q6KLmpDdpydooFBAurqGyVWY3Zy2EZ9"
 
 [registry]
 url = "https://api.apr.dev"
 
+# [provider]
+# cluster = "Localnet"
+# wallet = "/home/rabeebaqdas/.config/solana/id.json"
+
 [provider]
-cluster = "Localnet"
-wallet = "/home/rabeebaqdas/.config/solana/id.json"
+cluster = "http://127.0.0.1:8899"
+wallet = "~/.config/solana/id.json"
+
 
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
