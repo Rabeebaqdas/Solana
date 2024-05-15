@@ -205,6 +205,5 @@ pub enum  ErrorCode {
     NotStaked,
     #[msg("No Tokens to stake")]
     NoTokens,
-
 }
 

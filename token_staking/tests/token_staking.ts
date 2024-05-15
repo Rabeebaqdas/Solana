@@ -14,16 +14,18 @@ describe("token_staking", () => {
   anchor.setProvider(provider);
   const payer = provider.wallet as anchor.Wallet;
   const connection = new Connection("http://127.0.0.1:8899", "confirmed");
-  const mintKeyPair = Keypair.generate();
-  // const mintKeyPair = Keypair.fromSecretKey(
-  //   new Uint8Array([
-  //     36, 70, 213, 113, 12, 69, 76, 247, 165, 75, 89, 69, 36, 158, 66, 13, 11,
-  //     197, 51, 189, 5, 76, 253, 128, 64, 147, 155, 113, 52, 48, 77, 96, 146, 31,
-  //     22, 148, 16, 218, 82, 4, 104, 45, 58, 98, 13, 58, 40, 42, 84, 15, 7, 103,
-  //     62, 72, 53, 145, 28, 188, 40, 132, 39, 97, 220, 241,
-  //   ])
-  // );
-  // console.log(mintKeyPair);
+  // const mintKeyPair = Keypair.generate();
+  const mintKeyPair = Keypair.fromSecretKey(
+    new Uint8Array([
+      156, 128, 111,  56, 158, 125, 251,  63, 139,   1,  98,
+      136,   7,  94,  15,  34, 251,  75,  69, 191,  66, 239,
+      123,  58, 103, 109, 106, 130, 248,  25, 181, 249, 139,
+       40, 145, 227, 134,  85, 112, 183, 163, 182,  53, 145,
+        2, 128, 117,  43, 172, 136, 210, 231, 224, 237,  15,
+        3, 182, 142,  99,  25,  93, 208, 119, 182
+    ])
+  );
+  console.log(mintKeyPair);
 
   const program = anchor.workspace.TokenStaking as Program<TokenStaking>;
 
@@ -40,7 +42,7 @@ describe("token_staking", () => {
   }
 
   it("Is initialized!", async () => {
-    await createMintToken();
+    // await createMintToken();
     let [vaultAccount] = PublicKey.findProgramAddressSync(
       [Buffer.from("vault")],
       program.programId
