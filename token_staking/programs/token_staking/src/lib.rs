@@ -24,16 +24,39 @@ pub mod token_staking {
 
     pub fn stake(ctx: Context<Stake>, amount:u64) -> Result<()> {
         let stake_info = &mut ctx.accounts.stake_info_account;
-        if stake_info.is_staked {
-            return Err(ErrorCode::IsStaked.into());
-        }
+
         if amount <= 0 {
             return Err(ErrorCode::NoTokens.into());
         }
 
+        if stake_info.is_staked {
+            // return Err(ErrorCode::IsStaked.into());
+            let clock = Clock::get()?;
+            let slots_passed = clock.slot - stake_info.staked_at_slot;
+
+        let reward = (slots_passed as u64).checked_mul(10u64.pow(ctx.accounts.mint.decimals as u32)).unwrap();
+        let bump_vault = ctx.bumps.token_vault_account;
+        let signer: &[&[&[u8]]] = &[&[constants::VAULT_SEED, &[bump_vault]]];
+        transfer(
+            CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(), Transfer{
+                from:ctx.accounts.token_vault_account.to_account_info() ,
+                to: ctx.accounts.user_token_account.to_account_info(),
+                authority:ctx.accounts.token_vault_account.to_account_info() ,
+            }, signer),
+            reward
+        )?;
+        msg!("Clock Slot: {}", clock.slot );    
+        msg!("Slot at the time of stake: {}", stake_info.staked_at_slot);
+        msg!("Reward: {}", reward);
+        msg!("slots_passed: {}", slots_passed);
+
+        }else {
+
+            stake_info.is_staked = true;    
+        }
+
         let clock = Clock::get()?;
         stake_info.staked_at_slot = clock.slot;
-        stake_info.is_staked = true;
 
         //to add the decimals in the input amount
         // let stake_amount = (amount).checked_mul(10u64.pow(ctx.accounts.mint.decimals as u32)).unwrap();
@@ -49,7 +72,8 @@ pub mod token_staking {
             ),
             amount
         )?;
-
+        msg!("New Amount: {}", ctx.accounts.stake_account.amount);
+   
         Ok(())
     }
 
@@ -137,6 +161,13 @@ pub struct Stake<'info> {
 
     )]
     pub stake_account: Account<'info, TokenAccount>,
+
+    #[account(
+        mut,
+        seeds = [constants::VAULT_SEED],
+        bump,
+    )]
+    pub token_vault_account: Account<'info, TokenAccount>,
 
     #[account(
         mut,

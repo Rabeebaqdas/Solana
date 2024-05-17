@@ -14,17 +14,15 @@ describe("token_staking", () => {
   anchor.setProvider(provider);
   const payer = provider.wallet as anchor.Wallet;
   const connection = new Connection("http://127.0.0.1:8899", "confirmed");
-  // const mintKeyPair = Keypair.generate();
-  const mintKeyPair = Keypair.fromSecretKey(
-    new Uint8Array([
-      156, 128, 111,  56, 158, 125, 251,  63, 139,   1,  98,
-      136,   7,  94,  15,  34, 251,  75,  69, 191,  66, 239,
-      123,  58, 103, 109, 106, 130, 248,  25, 181, 249, 139,
-       40, 145, 227, 134,  85, 112, 183, 163, 182,  53, 145,
-        2, 128, 117,  43, 172, 136, 210, 231, 224, 237,  15,
-        3, 182, 142,  99,  25,  93, 208, 119, 182
-    ])
-  );
+  const mintKeyPair = Keypair.generate();
+  // const mintKeyPair = Keypair.fromSecretKey(
+  //   new Uint8Array([
+  //     99, 3, 113, 227, 15, 233, 251, 120, 94, 162, 132, 156, 3, 192, 182, 78,
+  //     241, 77, 98, 187, 67, 148, 172, 67, 22, 193, 0, 104, 90, 201, 223, 203,
+  //     102, 126, 148, 163, 97, 239, 92, 183, 157, 204, 108, 15, 94, 42, 89, 244,
+  //     239, 115, 59, 190, 9, 125, 16, 122, 79, 135, 130, 64, 82, 106, 183, 121,
+  //   ])
+  // );
   console.log(mintKeyPair);
 
   const program = anchor.workspace.TokenStaking as Program<TokenStaking>;
@@ -42,11 +40,13 @@ describe("token_staking", () => {
   }
 
   it("Is initialized!", async () => {
-    // await createMintToken();
+    await createMintToken();
+
     let [vaultAccount] = PublicKey.findProgramAddressSync(
       [Buffer.from("vault")],
       program.programId
     );
+
     const tx = await program.methods
       .initialize()
       .accounts({
@@ -56,9 +56,35 @@ describe("token_staking", () => {
       })
       .rpc();
     console.log("Your transaction signature", tx);
+
+        // sending funds in the vault to give rewards to users
+        await mintTo(
+          connection,
+          payer.payer,
+          mintKeyPair.publicKey,
+          vaultAccount,
+          payer.publicKey,
+          1e15
+        );
+
+
+    // sending funds in the vault to give rewards to users
+    // await mintTo(
+    //   connection,
+    //   payer.payer,
+    //   mintKeyPair.publicKey,
+    //   vaultAccount,
+    //   payer.publicKey,
+    //   1e15
+    // );
   });
 
   it("stake tokens!", async () => {
+    let [vaultAccount] = PublicKey.findProgramAddressSync(
+      [Buffer.from("vault")],
+      program.programId
+    );
+    //making associated token account to hold the user's tokens
     let userTokenAccount = await getOrCreateAssociatedTokenAccount(
       connection,
       payer.payer,
@@ -66,6 +92,7 @@ describe("token_staking", () => {
       payer.publicKey
     );
 
+    // mint 10 tokens in the user's associated token account
     await mintTo(
       connection,
       payer.payer,
@@ -75,22 +102,24 @@ describe("token_staking", () => {
       1e11
     );
 
+    // getting the pda of users stake info account
     let [stakeInfo] = PublicKey.findProgramAddressSync(
       [Buffer.from("stake_info"), payer.publicKey.toBuffer()],
       program.programId
     );
 
+    // getting the pda of users stake account
     let [stakeAccount] = PublicKey.findProgramAddressSync(
       [Buffer.from("token"), payer.publicKey.toBuffer()],
       program.programId
     );
 
-    await getOrCreateAssociatedTokenAccount(
-      connection,
-      payer.payer,
-      mintKeyPair.publicKey,
-      payer.publicKey
-    );
+    // await getOrCreateAssociatedTokenAccount(
+    //   connection,
+    //   payer.payer,
+    //   mintKeyPair.publicKey,
+    //   payer.publicKey
+    // );
 
     const tx = await program.methods
       .stake(new anchor.BN(1000000000))
@@ -98,67 +127,67 @@ describe("token_staking", () => {
       .accounts({
         stakeInfoAccount: stakeInfo,
         stakeAccount: stakeAccount,
-        userTokenAccount: userTokenAccount.address,
-        mint: mintKeyPair.publicKey,
-        signer: payer.publicKey,
-      })
-      .rpc();
-    console.log("Your transaction signature", tx);
-  });
-
-  it("unstake tokens!", async () => {
-    let userTokenAccount = await getOrCreateAssociatedTokenAccount(
-      connection,
-      payer.payer,
-      mintKeyPair.publicKey,
-      payer.publicKey
-    );
-
-    let [stakeInfo] = PublicKey.findProgramAddressSync(
-      [Buffer.from("stake_info"), payer.publicKey.toBuffer()],
-      program.programId
-    );
-
-    let [stakeAccount] = PublicKey.findProgramAddressSync(
-      [Buffer.from("token"), payer.publicKey.toBuffer()],
-      program.programId
-    );
-
-    let [vaultAccount] = PublicKey.findProgramAddressSync(
-      [Buffer.from("vault")],
-      program.programId
-    );
-
-    await getOrCreateAssociatedTokenAccount(
-      connection,
-      payer.payer,
-      mintKeyPair.publicKey,
-      payer.publicKey
-    );
-
-    //funding the vault so that it can give the rewards
-    await mintTo(
-      connection,
-      payer.payer,
-      mintKeyPair.publicKey,
-      vaultAccount,
-      payer.publicKey,
-      1e21
-    );
-
-
-    const tx = await program.methods
-      .unstake()
-      .signers([payer.payer])
-      .accounts({
-        stakeInfoAccount: stakeInfo,
-        stakeAccount: stakeAccount,
-        userTokenAccount: userTokenAccount.address,
         tokenVaultAccount: vaultAccount,
+        userTokenAccount: userTokenAccount.address,
         mint: mintKeyPair.publicKey,
         signer: payer.publicKey,
       })
       .rpc();
     console.log("Your transaction signature", tx);
   });
+
+  // it("unstake tokens!", async () => {
+  //   let userTokenAccount = await getOrCreateAssociatedTokenAccount(
+  //     connection,
+  //     payer.payer,
+  //     mintKeyPair.publicKey,
+  //     payer.publicKey
+  //   );
+
+  //   let [stakeInfo] = PublicKey.findProgramAddressSync(
+  //     [Buffer.from("stake_info"), payer.publicKey.toBuffer()],
+  //     program.programId
+  //   );
+
+  //   let [stakeAccount] = PublicKey.findProgramAddressSync(
+  //     [Buffer.from("token"), payer.publicKey.toBuffer()],
+  //     program.programId
+  //   );
+
+  //   let [vaultAccount] = PublicKey.findProgramAddressSync(
+  //     [Buffer.from("vault")],
+  //     program.programId
+  //   );
+
+  //   // await getOrCreateAssociatedTokenAccount(
+  //   //   connection,
+  //   //   payer.payer,
+  //   //   mintKeyPair.publicKey,
+  //   //   payer.publicKey
+  //   // );
+
+  //   //funding the vault so that it can give the rewards
+  //   await mintTo(
+  //     connection,
+  //     payer.payer,
+  //     mintKeyPair.publicKey,
+  //     vaultAccount,
+  //     payer.publicKey,
+  //     1e21
+  //   );
+
+  //   const tx = await program.methods
+  //     .unstake()
+  //     .signers([payer.payer])
+  //     .accounts({
+  //       stakeInfoAccount: stakeInfo,
+  //       stakeAccount: stakeAccount,
+  //       userTokenAccount: userTokenAccount.address,
+  //       tokenVaultAccount: vaultAccount,
+  //       mint: mintKeyPair.publicKey,
+  //       signer: payer.publicKey,
+  //     })
+  //     .rpc();
+  //   console.log("Your transaction signature", tx);
+  // });
 });
