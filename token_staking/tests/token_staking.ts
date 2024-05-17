@@ -95,10 +95,44 @@ describe("token_staking", () => {
   });
 
   it("stake tokens!", async () => {
-    let [vaultAccount] = PublicKey.findProgramAddressSync(
-      [Buffer.from("vault")],
+
+    //making associated token account to hold the user's tokens
+    let userTokenAccount = await getOrCreateAssociatedTokenAccount(
+      connection,
+      payer.payer,
+      mintKeyPair.publicKey,
+      payer.publicKey
+    );
+
+    // getting the pda of users stake info account
+    let [stakeInfo] = PublicKey.findProgramAddressSync(
+      [Buffer.from("stake_info"), payer.publicKey.toBuffer()],
       program.programId
     );
+
+    // getting the pda of users stake account
+    let [stakeAccount] = PublicKey.findProgramAddressSync(
+      [Buffer.from("token"), payer.publicKey.toBuffer()],
+      program.programId
+    );
+
+    const tx = await program.methods
+      .stake(new anchor.BN(1000000000))
+      .signers([payer.payer])
+      .accounts({
+        stakeInfoAccount: stakeInfo,
+        stakeAccount: stakeAccount,
+        // tokenVaultAccount: vaultAccount,
+        userTokenAccount: userTokenAccount.address,
+        mint: mintKeyPair.publicKey,
+        signer: payer.publicKey,
+      })
+      .rpc();
+    console.log("Your transaction signature", tx);
+  });
+
+  it("Again Stake tokens!", async () => {
+
     //making associated token account to hold the user's tokens
     let userTokenAccount = await getOrCreateAssociatedTokenAccount(
       connection,
@@ -156,6 +190,9 @@ describe("token_staking", () => {
       [Buffer.from("vault")],
       program.programId
     );
+    
+    // Fetch the details of stake Info account
+    console.log("Stake Account Info Before:", (await program.account.stakeInfo.fetch(stakeInfo)).pendingRewards);
 
     const tx = await program.methods
       .claimReward()
@@ -173,10 +210,8 @@ describe("token_staking", () => {
 
 
     // Fetch the details of stake Info account
-    const stakeAccountInfo = await program.account.stakeInfo.fetch(stakeInfo);
+    console.log("Stake Account Info After:", (await program.account.stakeInfo.fetch(stakeInfo)).pendingRewards);
 
-    // Print the stake account info
-    console.log("Stake Account Info:", stakeAccountInfo);
   });
 
   it("Unstake tokens!", async () => {

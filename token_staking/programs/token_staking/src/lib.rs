@@ -30,37 +30,22 @@ pub mod token_staking {
         }
 
         if stake_info.is_staked {
-            return Err(ErrorCode::IsStaked.into());
-        //     let clock: Clock = Clock::get()?;
-        //     let slots_passed = clock.slot - stake_info.staked_at_slot;
+            
+            let clock: Clock = Clock::get()?;
+            let slots_passed = clock.slot - stake_info.staked_at_slot;
 
-        // let reward = (slots_passed as u64).checked_mul(10u64.pow(ctx.accounts.mint.decimals as u32)).unwrap();
-        // let bump_vault = ctx.bumps.token_vault_account;
-        // let signer: &[&[&[u8]]] = &[&[constants::VAULT_SEED, &[bump_vault]]];
-        // transfer(
-        //     CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(), Transfer{
-        //         from:ctx.accounts.token_vault_account.to_account_info() ,
-        //         to: ctx.accounts.user_token_account.to_account_info(),
-        //         authority:ctx.accounts.token_vault_account.to_account_info() ,
-        //     }, signer),
-        //     reward
-        // )?;
-        // msg!("Clock Slot: {}", clock.slot );    
-        // msg!("Slot at the time of stake: {}", stake_info.staked_at_slot);
-        // msg!("Reward: {}", reward);
-        // msg!("slots_passed: {}", slots_passed);
-
+        let rewards = (slots_passed as u64).checked_mul(10u64.pow(ctx.accounts.mint.decimals as u32)).unwrap();
+        stake_info.pending_rewards += rewards;
         }
-        // else {
-
-        //     stake_info.is_staked = true;    
-        // }
+        else {
+            stake_info.is_staked = true;    
+        }
 
         let clock = Clock::get()?;
-        stake_info.staked_at_slot = clock.slot;
-        stake_info.is_staked = true;    
+        stake_info.staked_at_slot = clock.slot; 
         //to add the decimals in the input amount
         // let stake_amount = (amount).checked_mul(10u64.pow(ctx.accounts.mint.decimals as u32)).unwrap();
+        msg!("Old Amount: {}", ctx.accounts.stake_account.amount);
 
         transfer(
             CpiContext::new(
@@ -86,7 +71,7 @@ pub mod token_staking {
         let clock = Clock::get()?;
         let slots_passed = clock.slot - stake_info.staked_at_slot;
     
-        let reward = (slots_passed as u64).checked_mul(10u64.pow(ctx.accounts.mint.decimals as u32)).unwrap();
+        let rewards = (slots_passed as u64).checked_mul(10u64.pow(ctx.accounts.mint.decimals as u32)).unwrap() + stake_info.pending_rewards;
         let bump_vault = ctx.bumps.token_vault_account;
         let signer: &[&[&[u8]]] = &[&[constants::VAULT_SEED, &[bump_vault]]];
         transfer(
@@ -95,14 +80,14 @@ pub mod token_staking {
                 to: ctx.accounts.user_token_account.to_account_info(),
                 authority:ctx.accounts.token_vault_account.to_account_info() ,
             }, signer),
-            reward
+            rewards
         )?;
-        msg!("Status Before: {}", stake_info.is_staked);
+
     
         stake_info.staked_at_slot = clock.slot;
-        msg!("Status After: {}", stake_info.is_staked); 
         msg!("Clock Slot: {}", clock.slot );    
-        msg!("Reward: {}", reward);
+        msg!("Slot at the time of stake: {}", stake_info.staked_at_slot);
+        msg!("Reward: {}", rewards);
         msg!("slots_passed: {}", slots_passed);
         Ok(())
      }
@@ -146,6 +131,7 @@ pub mod token_staking {
         msg!("Slot at the time of stake: {}", stake_info.staked_at_slot);
         msg!("Reward: {}", reward);
         msg!("slots_passed: {}", slots_passed);
+        msg!("amount unstaked: {}", stake_amount);
         Ok(())
     }
 }
@@ -194,13 +180,6 @@ pub struct Stake<'info> {
 
     )]
     pub stake_account: Account<'info, TokenAccount>,
-
-    // #[account(
-    //     mut,
-    //     seeds = [constants::VAULT_SEED],
-    //     bump,
-    // )]
-    // pub token_vault_account: Account<'info, TokenAccount>,
 
     #[account(
         mut,
@@ -296,14 +275,13 @@ pub struct ClaimRewards<'info> {
 #[account] 
 pub struct StakeInfo {
     pub staked_at_slot: u64,
-    pub is_staked : bool
+    pub is_staked : bool,
+    pub pending_rewards: u64,
 
 }
 
 #[error_code]
 pub enum  ErrorCode {
-    #[msg("Tokens are already staked")]
-    IsStaked,
     #[msg("Tokens are not staked")]
     NotStaked,
     #[msg("No Tokens to stake")]
