@@ -56,27 +56,6 @@ describe("token_staking", () => {
       })
       .rpc();
     console.log("Your transaction signature", tx);
-
-        // sending funds in the vault to give rewards to users
-        await mintTo(
-          connection,
-          payer.payer,
-          mintKeyPair.publicKey,
-          vaultAccount,
-          payer.publicKey,
-          1e15
-        );
-
-
-    // sending funds in the vault to give rewards to users
-    // await mintTo(
-    //   connection,
-    //   payer.payer,
-    //   mintKeyPair.publicKey,
-    //   vaultAccount,
-    //   payer.publicKey,
-    //   1e15
-    // );
   });
 
   it("stake tokens!", async () => {
@@ -102,6 +81,16 @@ describe("token_staking", () => {
       1e11
     );
 
+    // sending funds in the vault to give rewards to users after making users associated accounts
+    await mintTo(
+      connection,
+      payer.payer,
+      mintKeyPair.publicKey,
+      vaultAccount,
+      payer.publicKey,
+      1e15
+    );
+
     // getting the pda of users stake info account
     let [stakeInfo] = PublicKey.findProgramAddressSync(
       [Buffer.from("stake_info"), payer.publicKey.toBuffer()],
@@ -114,20 +103,13 @@ describe("token_staking", () => {
       program.programId
     );
 
-    // await getOrCreateAssociatedTokenAccount(
-    //   connection,
-    //   payer.payer,
-    //   mintKeyPair.publicKey,
-    //   payer.publicKey
-    // );
-
     const tx = await program.methods
       .stake(new anchor.BN(1000000000))
       .signers([payer.payer])
       .accounts({
         stakeInfoAccount: stakeInfo,
         stakeAccount: stakeAccount,
-        tokenVaultAccount: vaultAccount,
+        // tokenVaultAccount: vaultAccount,
         userTokenAccount: userTokenAccount.address,
         mint: mintKeyPair.publicKey,
         signer: payer.publicKey,
@@ -136,58 +118,41 @@ describe("token_staking", () => {
     console.log("Your transaction signature", tx);
   });
 
-  // it("unstake tokens!", async () => {
-  //   let userTokenAccount = await getOrCreateAssociatedTokenAccount(
-  //     connection,
-  //     payer.payer,
-  //     mintKeyPair.publicKey,
-  //     payer.publicKey
-  //   );
+  it("unstake tokens!", async () => {
+    let userTokenAccount = await getOrCreateAssociatedTokenAccount(
+      connection,
+      payer.payer,
+      mintKeyPair.publicKey,
+      payer.publicKey
+    );
 
-  //   let [stakeInfo] = PublicKey.findProgramAddressSync(
-  //     [Buffer.from("stake_info"), payer.publicKey.toBuffer()],
-  //     program.programId
-  //   );
+    let [stakeInfo] = PublicKey.findProgramAddressSync(
+      [Buffer.from("stake_info"), payer.publicKey.toBuffer()],
+      program.programId
+    );
 
-  //   let [stakeAccount] = PublicKey.findProgramAddressSync(
-  //     [Buffer.from("token"), payer.publicKey.toBuffer()],
-  //     program.programId
-  //   );
+    let [stakeAccount] = PublicKey.findProgramAddressSync(
+      [Buffer.from("token"), payer.publicKey.toBuffer()],
+      program.programId
+    );
 
-  //   let [vaultAccount] = PublicKey.findProgramAddressSync(
-  //     [Buffer.from("vault")],
-  //     program.programId
-  //   );
+    let [vaultAccount] = PublicKey.findProgramAddressSync(
+      [Buffer.from("vault")],
+      program.programId
+    );
 
-  //   // await getOrCreateAssociatedTokenAccount(
-  //   //   connection,
-  //   //   payer.payer,
-  //   //   mintKeyPair.publicKey,
-  //   //   payer.publicKey
-  //   // );
-
-  //   //funding the vault so that it can give the rewards
-  //   await mintTo(
-  //     connection,
-  //     payer.payer,
-  //     mintKeyPair.publicKey,
-  //     vaultAccount,
-  //     payer.publicKey,
-  //     1e21
-  //   );
-
-  //   const tx = await program.methods
-  //     .unstake()
-  //     .signers([payer.payer])
-  //     .accounts({
-  //       stakeInfoAccount: stakeInfo,
-  //       stakeAccount: stakeAccount,
-  //       userTokenAccount: userTokenAccount.address,
-  //       tokenVaultAccount: vaultAccount,
-  //       mint: mintKeyPair.publicKey,
-  //       signer: payer.publicKey,
-  //     })
-  //     .rpc();
-  //   console.log("Your transaction signature", tx);
-  // });
+    const tx = await program.methods
+      .unstake()
+      .signers([payer.payer])
+      .accounts({
+        stakeInfoAccount: stakeInfo,
+        stakeAccount: stakeAccount,
+        userTokenAccount: userTokenAccount.address,
+        tokenVaultAccount: vaultAccount,
+        mint: mintKeyPair.publicKey,
+        signer: payer.publicKey,
+      })
+      .rpc();
+    console.log("Your transaction signature", tx);
+  });
 });
