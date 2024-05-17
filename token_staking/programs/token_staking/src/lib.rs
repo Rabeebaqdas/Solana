@@ -31,7 +31,7 @@ pub mod token_staking {
 
         if stake_info.is_staked {
             return Err(ErrorCode::IsStaked.into());
-        //     let clock = Clock::get()?;
+        //     let clock: Clock = Clock::get()?;
         //     let slots_passed = clock.slot - stake_info.staked_at_slot;
 
         // let reward = (slots_passed as u64).checked_mul(10u64.pow(ctx.accounts.mint.decimals as u32)).unwrap();
@@ -78,6 +78,34 @@ pub mod token_staking {
         Ok(())
     }
 
+    pub fn claim_reward(ctx: Context<ClaimRewards>) -> Result<()> {
+        let stake_info = &mut ctx.accounts.stake_info_account;
+        if !stake_info.is_staked {
+            return Err(ErrorCode::NotStaked.into());
+        }
+        let clock = Clock::get()?;
+        let slots_passed = clock.slot - stake_info.staked_at_slot;
+    
+        let reward = (slots_passed as u64).checked_mul(10u64.pow(ctx.accounts.mint.decimals as u32)).unwrap();
+        let bump_vault = ctx.bumps.token_vault_account;
+        let signer: &[&[&[u8]]] = &[&[constants::VAULT_SEED, &[bump_vault]]];
+        transfer(
+            CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(), Transfer{
+                from:ctx.accounts.token_vault_account.to_account_info() ,
+                to: ctx.accounts.user_token_account.to_account_info(),
+                authority:ctx.accounts.token_vault_account.to_account_info() ,
+            }, signer),
+            reward
+        )?;
+        msg!("Status Before: {}", stake_info.is_staked);
+    
+        stake_info.staked_at_slot = clock.slot;
+        msg!("Status After: {}", stake_info.is_staked); 
+        msg!("Clock Slot: {}", clock.slot );    
+        msg!("Reward: {}", reward);
+        msg!("slots_passed: {}", slots_passed);
+        Ok(())
+     }
 
     pub fn unstake(ctx: Context<Unstake>) -> Result<()> {
         let stake_info = &mut ctx.accounts.stake_info_account;
@@ -114,11 +142,15 @@ pub mod token_staking {
 
         stake_info.is_staked = false;
         stake_info.staked_at_slot = clock.slot;
-
+        msg!("Clock Slot: {}", clock.slot );    
+        msg!("Slot at the time of stake: {}", stake_info.staked_at_slot);
+        msg!("Reward: {}", reward);
+        msg!("slots_passed: {}", slots_passed);
         Ok(())
     }
 }
 
+ 
 #[derive(Accounts)]
 pub struct Initialize<'info> {
     #[account(mut)]
@@ -185,6 +217,45 @@ pub struct Stake<'info> {
 
 #[derive(Accounts)]
 pub struct Unstake<'info> {
+    #[account(mut)]
+    pub signer: Signer<'info>,
+
+    #[account(
+        mut,
+        seeds = [constants::VAULT_SEED],
+        bump,
+    )]
+    pub token_vault_account: Account<'info, TokenAccount>,
+
+    #[account(
+        mut,
+        seeds = [constants::STAKE_INFO_SEED, signer.key.as_ref()],
+        bump,
+    )]
+    pub stake_info_account: Account<'info, StakeInfo>,
+
+    #[account(
+        mut,
+        seeds = [constants::TOKEN_SEED, signer.key.as_ref()],
+        bump,
+    )]
+    pub stake_account: Account<'info, TokenAccount>,
+
+    #[account(
+        mut,
+        associated_token::mint = mint,
+        associated_token::authority = signer,
+    )]
+    pub user_token_account: Account<'info, TokenAccount>,
+
+    pub mint: Account<'info, Mint>,
+    pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct ClaimRewards<'info> {
     #[account(mut)]
     pub signer: Signer<'info>,
 

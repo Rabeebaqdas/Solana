@@ -39,7 +39,7 @@ describe("token_staking", () => {
     console.log(mint);
   }
 
-  it("Is initialized!", async () => {
+  it("Initializing Contract", async () => {
     await createMintToken();
 
     let [vaultAccount] = PublicKey.findProgramAddressSync(
@@ -58,7 +58,7 @@ describe("token_staking", () => {
     console.log("Your transaction signature", tx);
   });
 
-  it("stake tokens!", async () => {
+  it("Sending tokens to the user and pda!", async () => {
     let [vaultAccount] = PublicKey.findProgramAddressSync(
       [Buffer.from("vault")],
       program.programId
@@ -91,6 +91,22 @@ describe("token_staking", () => {
       1e15
     );
 
+    console.log("Tokens transferred successfully");
+  });
+
+  it("stake tokens!", async () => {
+    let [vaultAccount] = PublicKey.findProgramAddressSync(
+      [Buffer.from("vault")],
+      program.programId
+    );
+    //making associated token account to hold the user's tokens
+    let userTokenAccount = await getOrCreateAssociatedTokenAccount(
+      connection,
+      payer.payer,
+      mintKeyPair.publicKey,
+      payer.publicKey
+    );
+
     // getting the pda of users stake info account
     let [stakeInfo] = PublicKey.findProgramAddressSync(
       [Buffer.from("stake_info"), payer.publicKey.toBuffer()],
@@ -118,7 +134,52 @@ describe("token_staking", () => {
     console.log("Your transaction signature", tx);
   });
 
-  it("unstake tokens!", async () => {
+  it("Claim Rewards", async () => {
+    let userTokenAccount = await getOrCreateAssociatedTokenAccount(
+      connection,
+      payer.payer,
+      mintKeyPair.publicKey,
+      payer.publicKey
+    );
+
+    let [stakeInfo] = PublicKey.findProgramAddressSync(
+      [Buffer.from("stake_info"), payer.publicKey.toBuffer()],
+      program.programId
+    );
+
+    let [stakeAccount] = PublicKey.findProgramAddressSync(
+      [Buffer.from("token"), payer.publicKey.toBuffer()],
+      program.programId
+    );
+
+    let [vaultAccount] = PublicKey.findProgramAddressSync(
+      [Buffer.from("vault")],
+      program.programId
+    );
+
+    const tx = await program.methods
+      .claimReward()
+      .signers([payer.payer])
+      .accounts({
+        stakeInfoAccount: stakeInfo,
+        stakeAccount: stakeAccount,
+        userTokenAccount: userTokenAccount.address,
+        tokenVaultAccount: vaultAccount,
+        mint: mintKeyPair.publicKey,
+        signer: payer.publicKey,
+      })
+      .rpc();
+    console.log("Your transaction signature", tx);
+
+
+    // Fetch the details of stake Info account
+    const stakeAccountInfo = await program.account.stakeInfo.fetch(stakeInfo);
+
+    // Print the stake account info
+    console.log("Stake Account Info:", stakeAccountInfo);
+  });
+
+  it("Unstake tokens!", async () => {
     let userTokenAccount = await getOrCreateAssociatedTokenAccount(
       connection,
       payer.payer,
