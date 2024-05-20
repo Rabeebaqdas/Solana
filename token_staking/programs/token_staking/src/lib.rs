@@ -10,6 +10,7 @@ pub mod constants {
     pub const VAULT_SEED: &[u8] = b"vault";
     pub const STAKE_INFO_SEED: &[u8] = b"stake_info";
     pub const TOKEN_SEED: &[u8] = b"token";
+    pub const REWARD_PER_SECOND: u64 = 100000000;
 }
 
 #[program]
@@ -34,8 +35,9 @@ pub mod token_staking {
             let clock: Clock = Clock::get()?;
             let time_passed = clock.unix_timestamp as u64 - stake_info.staked_start_time;
 
-        let rewards = time_passed.checked_mul(10u64.pow(ctx.accounts.mint.decimals as u32)).unwrap();
-        stake_info.pending_rewards += rewards;
+        // let rewards = time_passed.checked_mul(10u64.pow(ctx.accounts.mint.decimals as u32)).unwrap();
+        let rewards = time_passed.checked_mul(constants::REWARD_PER_SECOND).unwrap();
+        stake_info.pending_rewards += rewards * stake_info.staked_amount;
         }
         else {
             stake_info.is_staked = true;    
@@ -46,6 +48,7 @@ pub mod token_staking {
         // stake_info.staked_at_slot = clock.slot; 
         //using unix_timestamp
         stake_info.staked_start_time = clock.unix_timestamp as u64; 
+        stake_info.staked_amount += amount;
         //to add the decimals in the input amount
         // let stake_amount = (amount).checked_mul(10u64.pow(ctx.accounts.mint.decimals as u32)).unwrap();
 
@@ -74,7 +77,7 @@ pub mod token_staking {
         let clock = Clock::get()?;
         let time_passed = clock.unix_timestamp as u64 - stake_info.staked_start_time;
     
-        let rewards = time_passed.checked_mul(10u64.pow(ctx.accounts.mint.decimals as u32)).unwrap() + stake_info.pending_rewards;
+        let rewards = (time_passed.checked_mul(constants::REWARD_PER_SECOND).unwrap() * stake_info.staked_amount) + stake_info.pending_rewards;
         let bump_vault = ctx.bumps.token_vault_account;
         let signer: &[&[&[u8]]] = &[&[constants::VAULT_SEED, &[bump_vault]]];
         transfer(
@@ -88,6 +91,7 @@ pub mod token_staking {
 
     
         stake_info.staked_start_time = clock.unix_timestamp as u64;
+        stake_info.pending_rewards = 0;
         msg!("Clock Slot: {}", clock.slot );    
         msg!("unix_timestamp: {}", clock.unix_timestamp );    
         msg!("Slot at the time of stake: {}", stake_info.staked_start_time);
@@ -105,7 +109,7 @@ pub mod token_staking {
         let time_passed = clock.unix_timestamp as u64 - stake_info.staked_start_time;
         let stake_amount = ctx.accounts.stake_account.amount;
 
-        let reward = (time_passed as u64).checked_mul(10u64.pow(ctx.accounts.mint.decimals as u32)).unwrap();
+        let rewards = (time_passed.checked_mul(constants::REWARD_PER_SECOND).unwrap() * stake_info.staked_amount) + stake_info.pending_rewards;
         let bump_vault = ctx.bumps.token_vault_account;
         let signer: &[&[&[u8]]] = &[&[constants::VAULT_SEED, &[bump_vault]]];
         transfer(
@@ -114,7 +118,7 @@ pub mod token_staking {
                 to: ctx.accounts.user_token_account.to_account_info(),
                 authority:ctx.accounts.token_vault_account.to_account_info() ,
             }, signer),
-            reward
+            rewards
         )?;
 
         let staker = ctx.accounts.signer.key();
@@ -131,10 +135,12 @@ pub mod token_staking {
 
         stake_info.is_staked = false;
         stake_info.staked_start_time = clock.unix_timestamp as u64;
+        stake_info.pending_rewards = 0;
+        stake_info.staked_amount = 0;
         msg!("Clock Slot: {}", clock.slot );    
         msg!("unix_timestamp: {}", clock.unix_timestamp );    
         msg!("Slot at the time of stake: {}", stake_info.staked_start_time);
-        msg!("Reward: {}", reward);
+        msg!("Reward: {}", rewards);
         // msg!("slots_passed: {}", slots_passed);
         msg!("amount unstaked: {}", stake_amount);
         Ok(())
@@ -280,6 +286,7 @@ pub struct ClaimRewards<'info> {
 #[account] 
 pub struct StakeInfo {
     pub staked_start_time: u64,
+    pub staked_amount: u64,
     pub is_staked : bool,
     pub pending_rewards: u64,
 
