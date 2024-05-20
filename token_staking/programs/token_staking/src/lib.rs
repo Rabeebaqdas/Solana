@@ -32,20 +32,22 @@ pub mod token_staking {
         if stake_info.is_staked {
             
             let clock: Clock = Clock::get()?;
-            let slots_passed = clock.slot - stake_info.staked_at_slot;
+            let time_passed = clock.unix_timestamp as u64 - stake_info.staked_start_time;
 
-        let rewards = (slots_passed as u64).checked_mul(10u64.pow(ctx.accounts.mint.decimals as u32)).unwrap();
+        let rewards = time_passed.checked_mul(10u64.pow(ctx.accounts.mint.decimals as u32)).unwrap();
         stake_info.pending_rewards += rewards;
         }
         else {
             stake_info.is_staked = true;    
         }
 
-        let clock = Clock::get()?;
-        stake_info.staked_at_slot = clock.slot; 
+        let clock: Clock = Clock::get()?;
+        // using slot
+        // stake_info.staked_at_slot = clock.slot; 
+        //using unix_timestamp
+        stake_info.staked_start_time = clock.unix_timestamp as u64; 
         //to add the decimals in the input amount
         // let stake_amount = (amount).checked_mul(10u64.pow(ctx.accounts.mint.decimals as u32)).unwrap();
-        msg!("Old Amount: {}", ctx.accounts.stake_account.amount);
 
         transfer(
             CpiContext::new(
@@ -59,6 +61,7 @@ pub mod token_staking {
             amount
         )?;
         msg!("New Amount: {}", ctx.accounts.stake_account.amount);
+        msg!("unix_timestamp: {}", clock.unix_timestamp );    
    
         Ok(())
     }
@@ -69,9 +72,9 @@ pub mod token_staking {
             return Err(ErrorCode::NotStaked.into());
         }
         let clock = Clock::get()?;
-        let slots_passed = clock.slot - stake_info.staked_at_slot;
+        let time_passed = clock.unix_timestamp as u64 - stake_info.staked_start_time;
     
-        let rewards = (slots_passed as u64).checked_mul(10u64.pow(ctx.accounts.mint.decimals as u32)).unwrap() + stake_info.pending_rewards;
+        let rewards = time_passed.checked_mul(10u64.pow(ctx.accounts.mint.decimals as u32)).unwrap() + stake_info.pending_rewards;
         let bump_vault = ctx.bumps.token_vault_account;
         let signer: &[&[&[u8]]] = &[&[constants::VAULT_SEED, &[bump_vault]]];
         transfer(
@@ -84,11 +87,12 @@ pub mod token_staking {
         )?;
 
     
-        stake_info.staked_at_slot = clock.slot;
+        stake_info.staked_start_time = clock.unix_timestamp as u64;
         msg!("Clock Slot: {}", clock.slot );    
-        msg!("Slot at the time of stake: {}", stake_info.staked_at_slot);
+        msg!("unix_timestamp: {}", clock.unix_timestamp );    
+        msg!("Slot at the time of stake: {}", stake_info.staked_start_time);
         msg!("Reward: {}", rewards);
-        msg!("slots_passed: {}", slots_passed);
+        // msg!("slots_passed: {}", slots_passed);
         Ok(())
      }
 
@@ -98,10 +102,10 @@ pub mod token_staking {
             return Err(ErrorCode::NotStaked.into());
         }
         let clock = Clock::get()?;
-        let slots_passed = clock.slot - stake_info.staked_at_slot;
+        let time_passed = clock.unix_timestamp as u64 - stake_info.staked_start_time;
         let stake_amount = ctx.accounts.stake_account.amount;
 
-        let reward = (slots_passed as u64).checked_mul(10u64.pow(ctx.accounts.mint.decimals as u32)).unwrap();
+        let reward = (time_passed as u64).checked_mul(10u64.pow(ctx.accounts.mint.decimals as u32)).unwrap();
         let bump_vault = ctx.bumps.token_vault_account;
         let signer: &[&[&[u8]]] = &[&[constants::VAULT_SEED, &[bump_vault]]];
         transfer(
@@ -126,11 +130,12 @@ pub mod token_staking {
         )?;
 
         stake_info.is_staked = false;
-        stake_info.staked_at_slot = clock.slot;
+        stake_info.staked_start_time = clock.unix_timestamp as u64;
         msg!("Clock Slot: {}", clock.slot );    
-        msg!("Slot at the time of stake: {}", stake_info.staked_at_slot);
+        msg!("unix_timestamp: {}", clock.unix_timestamp );    
+        msg!("Slot at the time of stake: {}", stake_info.staked_start_time);
         msg!("Reward: {}", reward);
-        msg!("slots_passed: {}", slots_passed);
+        // msg!("slots_passed: {}", slots_passed);
         msg!("amount unstaked: {}", stake_amount);
         Ok(())
     }
@@ -274,7 +279,7 @@ pub struct ClaimRewards<'info> {
 
 #[account] 
 pub struct StakeInfo {
-    pub staked_at_slot: u64,
+    pub staked_start_time: u64,
     pub is_staked : bool,
     pub pending_rewards: u64,
 
