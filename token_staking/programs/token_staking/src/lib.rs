@@ -17,6 +17,8 @@ pub mod constants {
 pub mod token_staking {
   
 
+    use solana_program::native_token::LAMPORTS_PER_SOL;
+
     use super::*;
 
     pub fn initialize(_ctx: Context<Initialize>) -> Result<()> {
@@ -34,21 +36,22 @@ pub mod token_staking {
             
             let clock: Clock = Clock::get()?;
             let time_passed = clock.unix_timestamp as u64 - stake_info.staked_start_time;
-
-        // let rewards = time_passed.checked_mul(10u64.pow(ctx.accounts.mint.decimals as u32)).unwrap();
-        let rewards = time_passed.checked_mul(constants::REWARD_PER_SECOND).unwrap();
-        stake_info.pending_rewards += rewards * stake_info.staked_amount;
+         // let rewards = time_passed.checked_mul(10u64.pow(ctx.accounts.mint.decimals as u32)).unwrap();
+            let rewards = ((time_passed.checked_mul(constants::REWARD_PER_SECOND).unwrap()).checked_mul(stake_info.staked_amount).unwrap()).checked_div(LAMPORTS_PER_SOL).unwrap();
+             stake_info.pending_rewards = stake_info.pending_rewards.checked_add(rewards).unwrap();
         }
         else {
             stake_info.is_staked = true;    
         }
 
         let clock: Clock = Clock::get()?;
+
         // using slot
         // stake_info.staked_at_slot = clock.slot; 
+        
         //using unix_timestamp
         stake_info.staked_start_time = clock.unix_timestamp as u64; 
-        stake_info.staked_amount += amount;
+        stake_info.staked_amount = stake_info.staked_amount.checked_add(amount).unwrap();
         //to add the decimals in the input amount
         // let stake_amount = (amount).checked_mul(10u64.pow(ctx.accounts.mint.decimals as u32)).unwrap();
 
@@ -63,23 +66,31 @@ pub mod token_staking {
             ),
             amount
         )?;
-        msg!("New Amount: {}", ctx.accounts.stake_account.amount);
-        msg!("unix_timestamp: {}", clock.unix_timestamp );    
-   
+
+        msg!("New Amount: {}", stake_info.staked_amount);
+        msg!("Pending Rewards: {}", stake_info.pending_rewards);
+        msg!("Staking Start Time: {}", stake_info.staked_start_time);       
+
         Ok(())
     }
 
     pub fn claim_reward(ctx: Context<ClaimRewards>) -> Result<()> {
         let stake_info = &mut ctx.accounts.stake_info_account;
+    
         if !stake_info.is_staked {
             return Err(ErrorCode::NotStaked.into());
         }
+
         let clock = Clock::get()?;
-        let time_passed = clock.unix_timestamp as u64 - stake_info.staked_start_time;
-    
-        let rewards = (time_passed.checked_mul(constants::REWARD_PER_SECOND).unwrap() * stake_info.staked_amount) + stake_info.pending_rewards;
+        let time_passed = (clock.unix_timestamp as u64).checked_sub(stake_info.staked_start_time).unwrap();
+        let rewards = (((((time_passed.checked_mul(constants::REWARD_PER_SECOND).unwrap()).checked_mul(stake_info.staked_amount)).unwrap())).checked_div(LAMPORTS_PER_SOL).unwrap()).checked_add(stake_info.pending_rewards).unwrap();
+        
         let bump_vault = ctx.bumps.token_vault_account;
         let signer: &[&[&[u8]]] = &[&[constants::VAULT_SEED, &[bump_vault]]];
+
+        stake_info.staked_start_time = clock.unix_timestamp as u64;
+        stake_info.pending_rewards = 0;
+
         transfer(
             CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(), Transfer{
                 from:ctx.accounts.token_vault_account.to_account_info() ,
@@ -89,16 +100,11 @@ pub mod token_staking {
             rewards
         )?;
 
-    
-        stake_info.staked_start_time = clock.unix_timestamp as u64;
-        stake_info.pending_rewards = 0;
-        msg!("Clock Slot: {}", clock.slot );    
-        msg!("unix_timestamp: {}", clock.unix_timestamp );    
-        msg!("Slot at the time of stake: {}", stake_info.staked_start_time);
         msg!("Reward: {}", rewards);
-        // msg!("slots_passed: {}", slots_passed);
+
         Ok(())
      }
+     
 
     pub fn unstake(ctx: Context<Unstake>) -> Result<()> {
         let stake_info = &mut ctx.accounts.stake_info_account;
@@ -109,9 +115,15 @@ pub mod token_staking {
         let time_passed = clock.unix_timestamp as u64 - stake_info.staked_start_time;
         let stake_amount = ctx.accounts.stake_account.amount;
 
-        let rewards = (time_passed.checked_mul(constants::REWARD_PER_SECOND).unwrap() * stake_info.staked_amount) + stake_info.pending_rewards;
+        let rewards = (((((time_passed.checked_mul(constants::REWARD_PER_SECOND).unwrap()).checked_mul(stake_info.staked_amount)).unwrap())).checked_div(LAMPORTS_PER_SOL).unwrap()).checked_add(stake_info.pending_rewards).unwrap();
         let bump_vault = ctx.bumps.token_vault_account;
         let signer: &[&[&[u8]]] = &[&[constants::VAULT_SEED, &[bump_vault]]];
+
+        stake_info.is_staked = false;
+        stake_info.staked_start_time = 0;
+        stake_info.pending_rewards = 0;
+        stake_info.staked_amount = 0;
+
         transfer(
             CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(), Transfer{
                 from:ctx.accounts.token_vault_account.to_account_info() ,
@@ -124,6 +136,7 @@ pub mod token_staking {
         let staker = ctx.accounts.signer.key();
         let bump_stake = ctx.bumps.stake_account;
         let signer: &[&[&[u8]]] = &[&[constants::TOKEN_SEED, staker.as_ref(),&[bump_stake]]];
+
         transfer(
             CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(), Transfer{
                 from:ctx.accounts.stake_account.to_account_info() ,
@@ -133,16 +146,9 @@ pub mod token_staking {
             stake_amount
         )?;
 
-        stake_info.is_staked = false;
-        stake_info.staked_start_time = clock.unix_timestamp as u64;
-        stake_info.pending_rewards = 0;
-        stake_info.staked_amount = 0;
-        msg!("Clock Slot: {}", clock.slot );    
-        msg!("unix_timestamp: {}", clock.unix_timestamp );    
-        msg!("Slot at the time of stake: {}", stake_info.staked_start_time);
         msg!("Reward: {}", rewards);
-        // msg!("slots_passed: {}", slots_passed);
-        msg!("amount unstaked: {}", stake_amount);
+        msg!("amount unstaked: {}", stake_amount);  
+
         Ok(())
     }
 }
