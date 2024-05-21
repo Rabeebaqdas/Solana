@@ -140,7 +140,7 @@ describe("token_staking", () => {
   });
 
   it("Again Stake tokens!", async () => {
-    await sleep(10000);
+    await sleep(1000);
     //making associated token account to hold the user's tokens
     let userTokenAccount = await getOrCreateAssociatedTokenAccount(
       connection,

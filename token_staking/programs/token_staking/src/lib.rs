@@ -48,9 +48,10 @@ pub mod token_staking {
 
         // using slot
         // stake_info.staked_at_slot = clock.slot; 
-        
+
         //using unix_timestamp
         stake_info.staked_start_time = clock.unix_timestamp as u64; 
+        stake_info.locking_period = (clock.unix_timestamp).checked_add(20).unwrap(); // locking period is of 1 minute
         stake_info.staked_amount = stake_info.staked_amount.checked_add(amount).unwrap();
         //to add the decimals in the input amount
         // let stake_amount = (amount).checked_mul(10u64.pow(ctx.accounts.mint.decimals as u32)).unwrap();
@@ -101,7 +102,7 @@ pub mod token_staking {
         )?;
 
         msg!("Reward: {}", rewards);
-
+        msg!("Condition: {}", stake_info.locking_period > clock.unix_timestamp);  
         Ok(())
      }
      
@@ -112,6 +113,10 @@ pub mod token_staking {
             return Err(ErrorCode::NotStaked.into());
         }
         let clock = Clock::get()?;
+        if stake_info.locking_period > clock.unix_timestamp {
+            return Err(ErrorCode::LockingPeriodNotOverYet.into());
+        }   
+
         let time_passed = clock.unix_timestamp as u64 - stake_info.staked_start_time;
         let stake_amount = ctx.accounts.stake_account.amount;
 
@@ -122,6 +127,7 @@ pub mod token_staking {
         stake_info.is_staked = false;
         stake_info.staked_start_time = 0;
         stake_info.pending_rewards = 0;
+        stake_info.locking_period = 0;  
         stake_info.staked_amount = 0;
 
         transfer(
@@ -148,6 +154,7 @@ pub mod token_staking {
 
         msg!("Reward: {}", rewards);
         msg!("amount unstaked: {}", stake_amount);  
+
 
         Ok(())
     }
@@ -292,6 +299,7 @@ pub struct ClaimRewards<'info> {
 #[account] 
 pub struct StakeInfo {
     pub staked_start_time: u64,
+    pub locking_period: i64,
     pub staked_amount: u64,
     pub is_staked : bool,
     pub pending_rewards: u64,
@@ -304,5 +312,7 @@ pub enum  ErrorCode {
     NotStaked,
     #[msg("No Tokens to stake")]
     NoTokens,
+    #[msg("Locking period is not over yet")]
+    LockingPeriodNotOverYet,
 }
 
