@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{
     associated_token::AssociatedToken,
-    token::{CloseAccount, Mint, Token, TokenAccount, Transfer},
+    token::{CloseAccount, Mint, Token, TokenAccount, Transfer, transfer},
 };
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
@@ -16,7 +16,7 @@ pub mod safepay {
     ) -> Result<()> {
         let details = &mut ctx.accounts.application_state;
         details.idx = application_idx;
-        details.amount_tokens = amount; 
+        details.amount_tokens = amount;
         details.user_sending = ctx.accounts.user_sending.key().clone();
         details.user_receiving = ctx.accounts.user_receiving.key().clone();
         details.mint_of_token_being_sent = ctx.accounts.mint_of_token_being_sent.key().clone();
@@ -24,8 +24,69 @@ pub mod safepay {
 
         msg!("Initialized new Safe Transfer instance for {}", amount);
 
-        
+        // This specific step is very different compared to Ethereum. In Ethereum, accounts need to first set allowances towards
+        // a specific contract (like ZeroEx, Uniswap, Curve..) before the contract is able to withdraw funds. In this other case,
+        // the SafePay program can use Bob's signature to "authenticate" the `transfer()` instruction sent to the token contract.
+        // let bump_vector = state_bump.to_le_bytes();
+        // let mint_of_token_being_sent_pk = ctx.accounts.mint_of_token_being_sent.key().clone();
+        // let application_idx_bytes: [u8; 8] = application_idx.to_le_bytes();
+        // let bump_stake = ctx.bumps.application_state;
+
+        // let signer: &[&[&[u8]]] = &[&[
+        //     b"state".as_ref(),
+        //     ctx.accounts.user_sending.key.as_ref(),
+        //     ctx.accounts.user_receiving.key.as_ref(),
+        //     mint_of_token_being_sent_pk.as_ref(),
+        //     application_idx_bytes.as_ref(),
+        //     &[bump_stake],
+        // ]];
+
+        transfer(
+            CpiContext::new(
+                ctx.accounts.token_program.to_account_info(),
+                Transfer {
+                    from : ctx.accounts.wallet_to_withdraw_from.to_account_info(),
+                    to: ctx.accounts.escrow_wallet_state.to_account_info(),
+                    authority: ctx.accounts.user_sending.to_account_info(),
+                }
+            ),
+            amount
+        )?;
+        details.stage = Stage::FundsDeposited.to_code();
+
         Ok(())
+    }
+}
+
+#[derive(Clone, Copy, PartialEq)]
+pub enum Stage {
+    // Safe Pay withdrew funds from Alice and deposited them into the escrow wallet
+    FundsDeposited,
+
+    // {from FundsDeposited} Bob withdrew the funds from the escrow. We are done.
+    EscrowComplete,
+
+    // {from FundsDeposited} Alice pulled back the funds
+    PullBackComplete,
+}
+impl Stage {
+    fn to_code(&self) -> u8 {
+        match self {
+            Stage::FundsDeposited => 1,
+            Stage::EscrowComplete => 2,
+            Stage::PullBackComplete => 3,
+        }
+    }
+
+    fn from (val: u8) -> Result<Stage> {
+        match val {
+            1 => Ok(Stage::FundsDeposited),
+            2 => Ok(Stage::EscrowComplete),
+            3 => Ok(Stage::PullBackComplete),
+            unknown_value => {
+                msg!("Unknown stage: {}", unknown_value); 
+                Err(ErrorCode::StageInvalid.into())},
+        }
     }
 }
 
@@ -94,4 +155,16 @@ pub struct Details {
 
     // An enumm that is to represent some kind of state machine
     stage: u8,
+}
+
+#[error_code]
+pub enum ErrorCode {
+    #[msg("Wallet to withdraw from is not owned by owner")]
+    WalletToWithdrawFromInvalid,
+    #[msg("State index is inconsistent")]
+    InvalidStateIdx,
+    #[msg("Delegate is not set correctly")]
+    DelegateNotSetCorrectly,
+    #[msg("Stage is invalid")]
+    StageInvalid
 }
