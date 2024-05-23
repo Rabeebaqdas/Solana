@@ -13,7 +13,7 @@ pub mod safepay {
         ctx: Context<InitializeNewGrant>,
         application_idx: u64,
         amount: u64,
-    ) -> Result<()> {
+     ) -> Result<()> {
         let details = &mut ctx.accounts.application_state;
         details.idx = application_idx;
         details.amount_tokens = amount;
@@ -56,6 +56,7 @@ pub mod safepay {
 
         Ok(())
     }
+
 }
 
 #[derive(Clone, Copy, PartialEq)]
