@@ -37,7 +37,7 @@ describe("safepay", () => {
     const uid = new anchor.BN(parseInt((Date.now() / 1000).toString()));
     const uidBuffer = uid.toBuffer("le", 8);
 
-    let [statePubKey, stateBump] = PublicKey.findProgramAddressSync(
+    let [statePubKey] = PublicKey.findProgramAddressSync(
       [
         Buffer.from("state"),
         alice.toBuffer(),
@@ -152,23 +152,23 @@ describe("safepay", () => {
     return [accountInfo, accountInfo.amount.toString()];
   };
 
-  const readMint = async (
-    mintPublicKey: anchor.web3.PublicKey,
-    provider: anchor.Provider
-  ): Promise<spl.RawMint> => {
-    const tokenInfo = await provider.connection.getAccountInfo(mintPublicKey);
-    const data = Buffer.from(tokenInfo.data);
-    const accountInfo = spl.MintLayout.decode(data);
-    return {
-      ...accountInfo,
-      mintAuthority:
-        accountInfo.mintAuthority == null ? null : accountInfo.mintAuthority,
-      freezeAuthority:
-        accountInfo.freezeAuthority == null
-          ? null
-          : accountInfo.freezeAuthority,
-    };
-  };
+  // const readMint = async (
+  //   mintPublicKey: anchor.web3.PublicKey,
+  //   provider: anchor.Provider
+  // ): Promise<spl.RawMint> => {
+  //   const tokenInfo = await provider.connection.getAccountInfo(mintPublicKey);
+  //   const data = Buffer.from(tokenInfo.data);
+  //   const accountInfo = spl.MintLayout.decode(data);
+  //   return {
+  //     ...accountInfo,
+  //     mintAuthority:
+  //       accountInfo.mintAuthority == null ? null : accountInfo.mintAuthority,
+  //     freezeAuthority:
+  //       accountInfo.freezeAuthority == null
+  //         ? null
+  //         : accountInfo.freezeAuthority,
+  //   };
+  // };
 
   beforeEach(async () => {
     mintAddress = await createMintToken(provider.connection);
@@ -188,12 +188,11 @@ describe("safepay", () => {
     );
   });
 
-  it("Initialize and Complete Grant", async () => {
-    // Add your test here.
-
+  it.only("Initialize and Complete Grant", async () => {
     const [, aliceBalancePre] = await readAccount(aliceWallet, provider);
     assert.equal(aliceBalancePre, "1337000000");
     const amount = new anchor.BN(20000000);
+
     const tx = await program.methods
       .initializeNewGrant(pda.idx, amount)
       .accounts({
@@ -217,6 +216,12 @@ describe("safepay", () => {
 
     console.log("Initialize New Grant transaction signature", tx);
 
+    // Fetch the details of Application State account
+    console.log(
+      "Current State After",
+      (await program.account.details.fetch(pda.stateKey)).stage
+    );
+    
     // Assert that 20 tokens were moved from Alice's account to the escrow.
     const [, aliceBalancePost] = await readAccount(aliceWallet, provider);
     assert.equal(aliceBalancePost, "1317000000");
@@ -270,11 +275,14 @@ describe("safepay", () => {
         "Cannot read properties of null (reading 'data')"
       );
     }
+    // Fetch the details of Application State account
+    console.log(
+      "Current State After",
+      (await program.account.details.fetch(pda.stateKey)).stage
+    );
   });
 
-  it.only("can pull back funds once they are deposited", async () => {
-    // Add your test here.
-
+  it("can pull back funds once they are deposited", async () => {
     const [, aliceBalancePre] = await readAccount(aliceWallet, provider);
     assert.equal(aliceBalancePre, "1337000000");
     const amount = new anchor.BN(20000000);

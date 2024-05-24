@@ -25,23 +25,6 @@ pub mod safepay {
 
         msg!("Initialized new Safe Transfer instance for {}", amount);
 
-        // This specific step is very different compared to Ethereum. In Ethereum, accounts need to first set allowances towards
-        // a specific contract (like ZeroEx, Uniswap, Curve..) before the contract is able to withdraw funds. In this other case,
-        // the SafePay program can use Bob's signature to "authenticate" the `transfer()` instruction sent to the token contract.
-        // let bump_vector = state_bump.to_le_bytes();
-        // let mint_of_token_being_sent_pk = ctx.accounts.mint_of_token_being_sent.key().clone();
-        // let application_idx_bytes: [u8; 8] = application_idx.to_le_bytes();
-        // let bump_stake = ctx.bumps.application_state;
-
-        // let signer: &[&[&[u8]]] = &[&[
-        //     b"state".as_ref(),
-        //     ctx.accounts.user_sending.key.as_ref(),
-        //     ctx.accounts.user_receiving.key.as_ref(),
-        //     mint_of_token_being_sent_pk.as_ref(),
-        //     application_idx_bytes.as_ref(),
-        //     &[bump_stake],
-        // ]];
-
         transfer(
             CpiContext::new(
                 ctx.accounts.token_program.to_account_info(),
