@@ -226,6 +226,47 @@ describe("safepay", () => {
     );
     assert.equal(escrowBalancePost, "20000000");
 
-    
+    // Create a token account for Bob.
+    const bobTokenAccount = await spl.getAssociatedTokenAddress(
+      mintAddress,
+      bob.publicKey,
+      false,
+      spl.TOKEN_PROGRAM_ID,
+      spl.ASSOCIATED_TOKEN_PROGRAM_ID
+    );
+
+    const tx2 = await program.methods
+      .completeGrant(pda.idx)
+      .accounts({
+        applicationState: pda.stateKey,
+        escrowWalletState: pda.escrowWalletKey,
+        walletToDepositTo: bobTokenAccount, 
+        userSending: alice.publicKey,
+        userReceiving: bob.publicKey,
+        mintOfTokenBeingSent: mintAddress,  
+
+        systemProgram: anchor.web3.SystemProgram.programId,
+        tokenProgram: spl.TOKEN_PROGRAM_ID,
+        associatedTokenProgram: spl.ASSOCIATED_TOKEN_PROGRAM_ID,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY, 
+      })
+      .signers([bob])
+      .rpc();
+
+    console.log("Complete Grant transaction signature", tx2);
+
+    // Assert that 20 tokens were sent back.
+    const [, bobBalance] = await readAccount(bobTokenAccount, provider);
+    assert.equal(bobBalance, "20000000");
+    // // Assert that escrow was correctly closed.
+    try {
+      await readAccount(pda.escrowWalletKey, provider);
+      return assert.fail("Account should be closed");
+    } catch (e) {
+      assert.equal(
+        e.message,
+        "Cannot read properties of null (reading 'data')"
+      );
+    }
   });
 });
