@@ -3,7 +3,7 @@ use anchor_spl::{
     associated_token::AssociatedToken,
     token::{close_account, transfer, CloseAccount, Mint, Token, TokenAccount, Transfer},
 };
-declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+declare_id!("GahQHYEwx2KVdK2zy3sY8CPak8y63XesQLHN9Z7EhgsS");
 
 #[program]
 pub mod safepay {
@@ -244,6 +244,7 @@ pub struct InitializeNewGrant<'info> {
     // Users and accounts in the system
     #[account(mut)]
     user_sending: Signer<'info>, // Alice
+    /// CHECK: This field holds the account information for the receiving user.
     user_receiving: AccountInfo<'info>,             // Bob
     mint_of_token_being_sent: Account<'info, Mint>, // USDC
 
@@ -288,6 +289,7 @@ pub struct CompleteGrant<'info> {
     wallet_to_deposit_to: Account<'info, TokenAccount>, // Bob's USDC wallet (will be initialized if it did not exist)
 
     // Users and accounts in the system
+    /// CHECK: This field holds the account information for the sender.
     #[account(mut)]
     user_sending: AccountInfo<'info>, // Alice
     #[account(mut)]
@@ -320,6 +322,7 @@ pub struct PullBackFunds<'info> {
     escrow_wallet_state: Account<'info, TokenAccount>,
 
     // Users and accounts in the system
+    /// CHECK: This field holds the account information for the sender.
     #[account(mut)]
     user_sending: AccountInfo<'info>, // Alice
     user_receiving: Signer<'info>,                  // Bob
