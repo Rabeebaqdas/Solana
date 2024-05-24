@@ -170,7 +170,6 @@ pub mod token_staking {
                 signer,
             ))?;
         }
-    
  
         msg!("Reward: {}", rewards);
         msg!("amount unstaked: {}", stake_amount);  
