@@ -243,9 +243,9 @@ pub struct InitializeNewGrant<'info> {
 pub struct CompleteGrant<'info> {
     // Derived PDAs
     #[account(
-            mut,
-            seeds=[b"state".as_ref(), user_sending.key().as_ref(), user_receiving.key.as_ref(), mint_of_token_being_sent.key().as_ref(), application_idx.to_le_bytes().as_ref()],
-            bump,
+        mut,
+        seeds=[b"state".as_ref(), user_sending.key().as_ref(), user_receiving.key.as_ref(), mint_of_token_being_sent.key().as_ref(), application_idx.to_le_bytes().as_ref()],
+        bump,
         )]
     application_state: Account<'info, Details>,
 
