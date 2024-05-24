@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl :: {
     associated_token::AssociatedToken,
-    token:: { Mint, Token, TokenAccount, Transfer, transfer}
+    token:: { Mint, Token, TokenAccount, Transfer, CloseAccount, transfer, close_account}
 };
 use solana_program::clock::Clock;
 
@@ -122,7 +122,7 @@ pub mod token_staking {
 
         let rewards = (((((time_passed.checked_mul(constants::REWARD_PER_SECOND).unwrap()).checked_mul(stake_info.staked_amount)).unwrap())).checked_div(LAMPORTS_PER_SOL).unwrap()).checked_add(stake_info.pending_rewards).unwrap();
         let bump_vault = ctx.bumps.token_vault_account;
-        let signer: &[&[&[u8]]] = &[&[constants::VAULT_SEED, &[bump_vault]]];
+        let signer_stake_account: &[&[&[u8]]] = &[&[constants::VAULT_SEED, &[bump_vault]]];
 
         stake_info.is_staked = false;
         stake_info.staked_start_time = 0;
@@ -135,14 +135,14 @@ pub mod token_staking {
                 from:ctx.accounts.token_vault_account.to_account_info() ,
                 to: ctx.accounts.user_token_account.to_account_info(),
                 authority:ctx.accounts.token_vault_account.to_account_info() ,
-            }, signer),
+            }, signer_stake_account),
             rewards
         )?;
 
         let staker = ctx.accounts.signer.key();
         let bump_stake = ctx.bumps.stake_account;
         let signer: &[&[&[u8]]] = &[&[constants::TOKEN_SEED, staker.as_ref(),&[bump_stake]]];
-
+        
         transfer(
             CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(), Transfer{
                 from:ctx.accounts.stake_account.to_account_info() ,
@@ -152,10 +152,28 @@ pub mod token_staking {
             stake_amount
         )?;
 
+        let should_close = {
+            ctx.accounts.stake_account.reload()?;
+            ctx.accounts.stake_account.amount == 0
+        };
+
+        if should_close {
+            let ca = CloseAccount{
+                account: ctx.accounts.stake_account.to_account_info(),
+                destination: ctx.accounts.signer.to_account_info(),
+                authority: ctx.accounts.stake_account.to_account_info(),
+            };
+
+            close_account(CpiContext::new_with_signer(
+                ctx.accounts.token_program.to_account_info(),
+                ca,
+                signer,
+            ))?;
+        }
+    
+ 
         msg!("Reward: {}", rewards);
         msg!("amount unstaked: {}", stake_amount);  
-
-
         Ok(())
     }
 }
