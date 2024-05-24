@@ -188,7 +188,7 @@ describe("safepay", () => {
     );
   });
 
-  it.only("Initialize and Complete Grant", async () => {
+  it("Initialize and Complete Grant", async () => {
     const [, aliceBalancePre] = await readAccount(aliceWallet, provider);
     assert.equal(aliceBalancePre, "1337000000");
     const amount = new anchor.BN(20000000);
@@ -204,7 +204,7 @@ describe("safepay", () => {
         walletToWithdrawFrom: aliceWallet,
 
         systemProgram: anchor.web3.SystemProgram.programId,
-        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        // rent: anchor.web3.SYSVAR_RENT_PUBKEY,  //no need for this account 
         tokenProgram: spl.TOKEN_PROGRAM_ID,
       })
       .signers([alice])
@@ -221,7 +221,7 @@ describe("safepay", () => {
       "Current State After",
       (await program.account.details.fetch(pda.stateKey)).stage
     );
-    
+
     // Assert that 20 tokens were moved from Alice's account to the escrow.
     const [, aliceBalancePost] = await readAccount(aliceWallet, provider);
     assert.equal(aliceBalancePost, "1317000000");
@@ -254,7 +254,7 @@ describe("safepay", () => {
         systemProgram: anchor.web3.SystemProgram.programId,
         tokenProgram: spl.TOKEN_PROGRAM_ID,
         associatedTokenProgram: spl.ASSOCIATED_TOKEN_PROGRAM_ID,
-        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        // rent: anchor.web3.SYSVAR_RENT_PUBKEY,
       })
       .signers([bob])
       .rpc();
@@ -282,10 +282,11 @@ describe("safepay", () => {
     );
   });
 
-  it("can pull back funds once they are deposited", async () => {
+  it.only("can pull back funds once they are deposited", async () => {
     const [, aliceBalancePre] = await readAccount(aliceWallet, provider);
     assert.equal(aliceBalancePre, "1337000000");
     const amount = new anchor.BN(20000000);
+
     const tx = await program.methods
       .initializeNewGrant(pda.idx, amount)
       .accounts({
@@ -297,7 +298,7 @@ describe("safepay", () => {
         walletToWithdrawFrom: aliceWallet,
 
         systemProgram: anchor.web3.SystemProgram.programId,
-        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        // rent: anchor.web3.SYSVAR_RENT_PUBKEY,
         tokenProgram: spl.TOKEN_PROGRAM_ID,
       })
       .signers([alice])
@@ -318,6 +319,13 @@ describe("safepay", () => {
     );
     assert.equal(escrowBalancePost, "20000000");
 
+    // //trying to send funds in the different account that is not owned by alice
+    // let maliciousWallet: anchor.web3.PublicKey;
+    // [, maliciousWallet] = await createUserAndAssociatedWallet(
+    //   provider.connection,
+    //   mintAddress
+    // );
+
     // Withdraw the funds back
     const tx2 = await program.methods
       .pullBack(pda.idx)
@@ -331,12 +339,12 @@ describe("safepay", () => {
 
         systemProgram: anchor.web3.SystemProgram.programId,
         tokenProgram: spl.TOKEN_PROGRAM_ID,
-        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        // rent: anchor.web3.SYSVAR_RENT_PUBKEY,
       })
       .signers([bob])
       .rpc();
 
-    console.log("Complete Grant transaction signature", tx2);
+    console.log("Pull Back transaction signature", tx2);
 
     // Assert that 20 tokens were sent back.
     const [, aliceBalanceRefund] = await readAccount(aliceWallet, provider);

@@ -242,7 +242,7 @@ pub struct InitializeNewGrant<'info> {
     // Application level accounts
     system_program: Program<'info, System>,
     token_program: Program<'info, Token>,
-    rent: Sysvar<'info, Rent>,
+    // rent: Sysvar<'info, Rent>,
 }
 
 #[derive(Accounts)]
@@ -283,7 +283,7 @@ pub struct CompleteGrant<'info> {
     system_program: Program<'info, System>,
     token_program: Program<'info, Token>,
     associated_token_program: Program<'info, AssociatedToken>,
-    rent: Sysvar<'info, Rent>,
+    // rent: Sysvar<'info, Rent>,
 }
 
 #[derive(Accounts)]
@@ -323,7 +323,7 @@ pub struct PullBackFunds<'info> {
     system_program: Program<'info, System>,
     token_program: Program<'info, Token>,
     associated_token_program: Program<'info, AssociatedToken>,
-    rent: Sysvar<'info, Rent>,
+    // rent: Sysvar<'info, Rent>,
 }
 
 #[account]
