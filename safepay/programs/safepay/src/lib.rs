@@ -5,6 +5,67 @@ use anchor_spl::{
 };
 declare_id!("GahQHYEwx2KVdK2zy3sY8CPak8y63XesQLHN9Z7EhgsS");
 
+fn transfer_escrow_out<'info>(
+    user_sending: AccountInfo<'info>,
+    user_receiving: AccountInfo<'info>,
+    mint_of_token_being_sent: AccountInfo<'info>,
+    escrow_wallet: &mut Account<'info, TokenAccount>,
+    application_idx: u64,
+    state: AccountInfo<'info>,
+    state_bump: u8,
+    token_program: AccountInfo<'info>,
+    destination_wallet: AccountInfo<'info>,
+    amount: u64,
+) -> Result<()> {
+    let mint_of_token_being_sent_pk = mint_of_token_being_sent.key().clone();
+    let application_idx_bytes: [u8; 8] = application_idx.to_le_bytes();
+    let bump_application_state = state_bump;
+    let signer: &[&[&[u8]]] = &[&[
+        b"state".as_ref(),
+        user_sending.key.as_ref(),
+        user_receiving.key.as_ref(),
+        mint_of_token_being_sent_pk.as_ref(),
+        application_idx_bytes.as_ref(),
+        &[bump_application_state],
+    ]];
+
+    transfer(
+        CpiContext::new_with_signer(
+            token_program.to_account_info(),
+            Transfer {
+                from: escrow_wallet.to_account_info(),
+                to: destination_wallet,
+                authority: state.to_account_info(),
+            },
+            signer,
+        ),
+        amount,
+    )?;
+
+    // Use the `reload()` function on an account to reload it's state. Since we performed the
+    // transfer, we are expecting the `amount` field to have changed.
+    let should_close = {
+        escrow_wallet.reload()?;
+        escrow_wallet.amount == 0
+    };
+
+    if should_close {
+        let ca = CloseAccount {
+            account: escrow_wallet.to_account_info(),
+            destination: user_sending.to_account_info(),
+            authority: state.to_account_info(),
+        };
+
+        close_account(CpiContext::new_with_signer(
+            token_program.to_account_info(),
+            ca,
+            signer,
+        ))?;
+    }
+
+    Ok(())
+}
+
 #[program]
 pub mod safepay {
 
@@ -50,52 +111,18 @@ pub mod safepay {
             return Err(ErrorCode::StageInvalid.into());
         }
 
-        let wallet_amount = ctx.accounts.escrow_wallet_state.amount;
-        let mint_of_token_being_sent_pk = ctx.accounts.mint_of_token_being_sent.key().clone();
-        let application_idx_bytes: [u8; 8] = application_idx.to_le_bytes();
-        let bump_application_state = ctx.bumps.application_state;
-        let signer: &[&[&[u8]]] = &[&[
-            b"state".as_ref(),
-            ctx.accounts.user_sending.key.as_ref(),
-            ctx.accounts.user_receiving.key.as_ref(),
-            mint_of_token_being_sent_pk.as_ref(),
-            application_idx_bytes.as_ref(),
-            &[bump_application_state],
-        ]];
-
-        transfer(
-            CpiContext::new_with_signer(
-                ctx.accounts.token_program.to_account_info(),
-                Transfer {
-                    from: ctx.accounts.escrow_wallet_state.to_account_info(),
-                    to: ctx.accounts.wallet_to_deposit_to.to_account_info(),
-                    authority: ctx.accounts.application_state.to_account_info(),
-                },
-                signer,
-            ),
-            wallet_amount,
+        transfer_escrow_out(
+            ctx.accounts.user_sending.to_account_info(),
+            ctx.accounts.user_receiving.to_account_info(),
+            ctx.accounts.mint_of_token_being_sent.to_account_info(),
+            &mut ctx.accounts.escrow_wallet_state,
+            application_idx,
+            ctx.accounts.application_state.to_account_info(),
+            ctx.bumps.application_state,
+            ctx.accounts.token_program.to_account_info(),
+            ctx.accounts.wallet_to_deposit_to.to_account_info(),
+            ctx.accounts.application_state.amount_tokens,
         )?;
-
-        // Use the `reload()` function on an account to reload it's state. Since we performed the
-        // transfer, we are expecting the `amount` field to have changed.
-        let should_close = {
-            ctx.accounts.escrow_wallet_state.reload()?;
-            ctx.accounts.escrow_wallet_state.amount == 0
-        };
-
-        if should_close {
-            let ca = CloseAccount {
-                account: ctx.accounts.escrow_wallet_state.to_account_info(),
-                destination: ctx.accounts.user_sending.to_account_info(),
-                authority: ctx.accounts.application_state.to_account_info(),
-            };
-
-            close_account(CpiContext::new_with_signer(
-                ctx.accounts.token_program.to_account_info(),
-                ca,
-                signer,
-            ))?;
-        }
 
         let state = &mut ctx.accounts.application_state;
         state.stage = Stage::EscrowComplete.to_code();
@@ -114,52 +141,18 @@ pub mod safepay {
             return Err(ErrorCode::StageInvalid.into());
         }
 
-        let wallet_amount = ctx.accounts.escrow_wallet_state.amount;
-        let mint_of_token_being_sent_pk = ctx.accounts.mint_of_token_being_sent.key().clone();
-        let application_idx_bytes: [u8; 8] = application_idx.to_le_bytes();
-        let bump_application_state = ctx.bumps.application_state;
-        let signer: &[&[&[u8]]] = &[&[
-            b"state".as_ref(),
-            ctx.accounts.user_sending.key.as_ref(),
-            ctx.accounts.user_receiving.key.as_ref(),
-            mint_of_token_being_sent_pk.as_ref(),
-            application_idx_bytes.as_ref(),
-            &[bump_application_state],
-        ]];
-
-        transfer(
-            CpiContext::new_with_signer(
-                ctx.accounts.token_program.to_account_info(),
-                Transfer {
-                    from: ctx.accounts.escrow_wallet_state.to_account_info(),
-                    to: ctx.accounts.refund_wallet.to_account_info(),
-                    authority: ctx.accounts.application_state.to_account_info(),
-                },
-                signer,
-            ),
-            wallet_amount,
+        transfer_escrow_out(
+            ctx.accounts.user_sending.to_account_info(),
+            ctx.accounts.user_receiving.to_account_info(),
+            ctx.accounts.mint_of_token_being_sent.to_account_info(),
+            &mut ctx.accounts.escrow_wallet_state,
+            application_idx,
+            ctx.accounts.application_state.to_account_info(),
+            ctx.bumps.application_state,
+            ctx.accounts.token_program.to_account_info(),
+            ctx.accounts.refund_wallet.to_account_info(),
+            ctx.accounts.application_state.amount_tokens,
         )?;
-
-        // Use the `reload()` function on an account to reload it's state. Since we performed the
-        // transfer, we are expecting the `amount` field to have changed.
-        let should_close = {
-            ctx.accounts.escrow_wallet_state.reload()?;
-            ctx.accounts.escrow_wallet_state.amount == 0
-        };
-
-        if should_close {
-            let ca = CloseAccount {
-                account: ctx.accounts.escrow_wallet_state.to_account_info(),
-                destination: ctx.accounts.user_sending.to_account_info(),
-                authority: ctx.accounts.application_state.to_account_info(),
-            };
-
-            close_account(CpiContext::new_with_signer(
-                ctx.accounts.token_program.to_account_info(),
-                ca,
-                signer,
-            ))?;
-        }
 
         let state = &mut ctx.accounts.application_state;
         state.stage = Stage::PullBackComplete.to_code();
@@ -228,7 +221,7 @@ pub struct InitializeNewGrant<'info> {
     #[account(mut)]
     user_sending: Signer<'info>, // Alice
     /// CHECK: This field holds the account information for the receiving user.
-    user_receiving: AccountInfo<'info>,             // Bob
+    user_receiving: AccountInfo<'info>, // Bob
     mint_of_token_being_sent: Account<'info, Mint>, // USDC
 
     // Alice's USDC wallet that has already approved the escrow wallet
