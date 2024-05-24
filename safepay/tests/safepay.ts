@@ -188,7 +188,7 @@ describe("safepay", () => {
     );
   });
 
-  it("Is initialized!", async () => {
+  it("Initialize and Complete Grant", async () => {
     // Add your test here.
 
     const [, aliceBalancePre] = await readAccount(aliceWallet, provider);
@@ -234,21 +234,22 @@ describe("safepay", () => {
       spl.TOKEN_PROGRAM_ID,
       spl.ASSOCIATED_TOKEN_PROGRAM_ID
     );
+    console.log("Bob Associated Account", bobTokenAccount);
 
     const tx2 = await program.methods
       .completeGrant(pda.idx)
       .accounts({
         applicationState: pda.stateKey,
         escrowWalletState: pda.escrowWalletKey,
-        walletToDepositTo: bobTokenAccount, 
+        walletToDepositTo: bobTokenAccount,
         userSending: alice.publicKey,
         userReceiving: bob.publicKey,
-        mintOfTokenBeingSent: mintAddress,  
+        mintOfTokenBeingSent: mintAddress,
 
         systemProgram: anchor.web3.SystemProgram.programId,
         tokenProgram: spl.TOKEN_PROGRAM_ID,
         associatedTokenProgram: spl.ASSOCIATED_TOKEN_PROGRAM_ID,
-        rent: anchor.web3.SYSVAR_RENT_PUBKEY, 
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
       })
       .signers([bob])
       .rpc();
@@ -260,7 +261,82 @@ describe("safepay", () => {
     assert.equal(bobBalance, "20000000");
     // // Assert that escrow was correctly closed.
     try {
-      await readAccount(pda.escrowWalletKey, provider);
+      const [info, balance] = await readAccount(pda.escrowWalletKey, provider);
+      console.log("===========>", info, balance);
+      return assert.fail("Account should be closed");
+    } catch (e) {
+      assert.equal(
+        e.message,
+        "Cannot read properties of null (reading 'data')"
+      );
+    }
+  });
+
+  it.only("can pull back funds once they are deposited", async () => {
+    // Add your test here.
+
+    const [, aliceBalancePre] = await readAccount(aliceWallet, provider);
+    assert.equal(aliceBalancePre, "1337000000");
+    const amount = new anchor.BN(20000000);
+    const tx = await program.methods
+      .initializeNewGrant(pda.idx, amount)
+      .accounts({
+        applicationState: pda.stateKey,
+        escrowWalletState: pda.escrowWalletKey,
+        userSending: alice.publicKey,
+        userReceiving: bob.publicKey,
+        mintOfTokenBeingSent: mintAddress,
+        walletToWithdrawFrom: aliceWallet,
+
+        systemProgram: anchor.web3.SystemProgram.programId,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        tokenProgram: spl.TOKEN_PROGRAM_ID,
+      })
+      .signers([alice])
+      .rpc();
+
+    console.log(
+      `Initialized a new Safe Pay instance. Alice will pay bob 20 tokens`
+    );
+
+    console.log("Initialize New Grant transaction signature", tx);
+
+    // Assert that 20 tokens were moved from Alice's account to the escrow.
+    const [, aliceBalancePost] = await readAccount(aliceWallet, provider);
+    assert.equal(aliceBalancePost, "1317000000");
+    const [, escrowBalancePost] = await readAccount(
+      pda.escrowWalletKey,
+      provider
+    );
+    assert.equal(escrowBalancePost, "20000000");
+
+    // Withdraw the funds back
+    const tx2 = await program.methods
+      .pullBack(pda.idx)
+      .accounts({
+        applicationState: pda.stateKey,
+        escrowWalletState: pda.escrowWalletKey,
+        refundWallet: aliceWallet,
+        userSending: alice.publicKey,
+        userReceiving: bob.publicKey,
+        mintOfTokenBeingSent: mintAddress,
+
+        systemProgram: anchor.web3.SystemProgram.programId,
+        tokenProgram: spl.TOKEN_PROGRAM_ID,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+      })
+      .signers([bob])
+      .rpc();
+
+    console.log("Complete Grant transaction signature", tx2);
+
+    // Assert that 20 tokens were sent back.
+    const [, aliceBalanceRefund] = await readAccount(aliceWallet, provider);
+    assert.equal(aliceBalanceRefund, "1337000000");
+    // // Assert that escrow was correctly closed.
+    try {
+      const [info, balance] = await readAccount(pda.escrowWalletKey, provider);
+      console.log("===========>", info, balance);
       return assert.fail("Account should be closed");
     } catch (e) {
       assert.equal(
