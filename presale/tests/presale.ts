@@ -52,7 +52,7 @@ describe("presale", () => {
         payer.publicKey
       );
 
-      mintTo(
+     let result = await mintTo(
         connection,
         payer.payer,
         tokenmint,
@@ -60,6 +60,7 @@ describe("presale", () => {
         payer.publicKey,
         1000000000000
       );
+      console.log("Mint to result:", result);
       console.log(
         `[${
           userAssociatedTokenAccount.address
@@ -71,18 +72,18 @@ describe("presale", () => {
 
   }
 
-  // const readAccount = async (
-  //   accountPublicKey: anchor.web3.PublicKey,
-  //   provider: anchor.Provider
-  // ): Promise<[spl.RawAccount, string]> => {
-  //   const tokenInfoLol = await provider.connection.getAccountInfo(
-  //     accountPublicKey
-  //   );
+  const readAccount = async (
+    accountPublicKey: anchor.web3.PublicKey,
+    provider: anchor.Provider
+  ): Promise<[spl.RawAccount, string]> => {
+    const tokenInfoLol = await provider.connection.getAccountInfo(
+      accountPublicKey
+    );
 
-  //   const data = Buffer.from(tokenInfoLol.data);
-  //   const accountInfo: spl.RawAccount = spl.AccountLayout.decode(data);
-  //   return [accountInfo, accountInfo.amount.toString()];
-  // };
+    const data = Buffer.from(tokenInfoLol.data);
+    const accountInfo: spl.RawAccount = spl.AccountLayout.decode(data);
+    return [accountInfo, accountInfo.amount.toString()];
+  };
 
   it("Is initialized!", async () => {
     let usdcmint = await createMintToken("usdc");
@@ -106,7 +107,8 @@ describe("presale", () => {
       program.programId
     );
     console.log("Done with minting")
-
+    const [, depositorBalance] = await readAccount(userAssociatedTokenAccount.address, provider);
+    console.log("Depositor Balance", depositorBalance)
     // Add your test here.
     const tx = await program.methods
       .initialize(
