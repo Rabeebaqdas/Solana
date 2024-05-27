@@ -1,9 +1,11 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{
     associated_token::AssociatedToken,
-    token::{close_account, transfer, CloseAccount, Mint, Token, TokenAccount, Transfer},
+    token::{
+        burn, close_account, transfer, Burn, CloseAccount, Mint, Token, TokenAccount, Transfer,
+    },
 };
-declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+declare_id!("HCXo1ZoY2ALW9dWDBjU1NfwHoaEEDsZ9g1FwrNfRC7GC");
 
 #[program]
 pub mod presale {
@@ -25,13 +27,14 @@ pub mod presale {
             .unwrap())
         .checked_add(round_three_allocation)
         .unwrap();
-
+            msg!("Amount to be Deposit: {}", total_amount_to_be_deposit);
+            msg!("user balance: {}", ctx.accounts.wallet_of_depositor.amount);
         //sending pre sale tokens into valut upon initialization
         transfer(
             CpiContext::new(
                 ctx.accounts.token_program.to_account_info(),
                 Transfer {
-                    from: ctx.accounts.admin.to_account_info(),
+                    from: ctx.accounts.wallet_of_depositor.to_account_info(),
                     to: ctx.accounts.token_vault.to_account_info(),
                     authority: ctx.accounts.admin.to_account_info(),
                 },
@@ -49,7 +52,7 @@ pub struct InitializePresale<'info> {
     #[account(
         init_if_needed,
         payer = admin,
-        seeds=[b"presale".as_ref()],
+        seeds=[b"presale_info".as_ref()],
         bump,
         space = 8 + std::mem::size_of::<PreSaleDetails>()
     )]
@@ -78,13 +81,20 @@ pub struct InitializePresale<'info> {
     mint_of_token_user_send: Account<'info, Mint>, // USDC
     mint_of_token_program_sent: Account<'info, Mint>, // Token
 
+    #[account(
+        mut,
+        constraint=wallet_of_depositor.owner == admin.key(),
+        constraint=wallet_of_depositor.mint == mint_of_token_program_sent.key()
+    )]
+    wallet_of_depositor: Account<'info, TokenAccount>,
+
     #[account(mut)]
     admin: Signer<'info>, // The person who is initializing the presale
 
     // Application level accounts
     system_program: Program<'info, System>,
     token_program: Program<'info, Token>,
-    associated_token_program: Program<'info, AssociatedToken>,
+
 }
 
 #[account]
