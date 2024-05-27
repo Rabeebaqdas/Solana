@@ -71,18 +71,18 @@ describe("presale", () => {
 
   }
 
-  const readAccount = async (
-    accountPublicKey: anchor.web3.PublicKey,
-    provider: anchor.Provider
-  ): Promise<[spl.RawAccount, string]> => {
-    const tokenInfoLol = await provider.connection.getAccountInfo(
-      accountPublicKey
-    );
+  // const readAccount = async (
+  //   accountPublicKey: anchor.web3.PublicKey,
+  //   provider: anchor.Provider
+  // ): Promise<[spl.RawAccount, string]> => {
+  //   const tokenInfoLol = await provider.connection.getAccountInfo(
+  //     accountPublicKey
+  //   );
 
-    const data = Buffer.from(tokenInfoLol.data);
-    const accountInfo: spl.RawAccount = spl.AccountLayout.decode(data);
-    return [accountInfo, accountInfo.amount.toString()];
-  };
+  //   const data = Buffer.from(tokenInfoLol.data);
+  //   const accountInfo: spl.RawAccount = spl.AccountLayout.decode(data);
+  //   return [accountInfo, accountInfo.amount.toString()];
+  // };
 
   it("Is initialized!", async () => {
     let usdcmint = await createMintToken("usdc");
@@ -106,8 +106,7 @@ describe("presale", () => {
       program.programId
     );
     console.log("Done with minting")
-    const [info, bobBalance] = await readAccount(userAssociatedTokenAccount.address, provider);
-    console.log('User Account Balance Before: ',info);
+
     // Add your test here.
     const tx = await program.methods
       .initialize(
@@ -119,10 +118,10 @@ describe("presale", () => {
         presaleInfo: presaleInfo,
         usdcVault: usdcVault,
         tokenVault: tokenVault,
+        mintOfTokenUserSend: usdcmint,  
+        mintOfTokenProgramSent: tokenmint,  
+        walletOfDepositor: userAssociatedTokenAccount.address,  
         admin: payer.publicKey,
-        mintOfTokenUserSend: usdcmint,
-        walletOfDepositor: userAssociatedTokenAccount.address,
-        mintOfTokenProgramSent: tokenmint,
         systemProgram: anchor.web3.SystemProgram.programId,
         tokenProgram: spl.TOKEN_PROGRAM_ID,
       })
