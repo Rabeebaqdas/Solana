@@ -5,7 +5,7 @@ import * as spl from "@solana/spl-token";
 import {
   createMint,
   getOrCreateAssociatedTokenAccount,
-  mintTo,
+  mintTo
 } from "@solana/spl-token";
 import { Presale } from "../target/types/presale";
 import { assert } from "chai";
@@ -154,7 +154,7 @@ describe("presale", () => {
     return [accountInfo, accountInfo.amount.toString()];
   };
 
-  beforeEach(async () => {
+  const init = async () => {
     usdcAddress = await createToken(provider.connection);
     dlAddress = await createToken(provider.connection);
 
@@ -163,13 +163,11 @@ describe("presale", () => {
       dlAddress
     );
 
-    // let _rest;
-    // [bob, ..._rest] = await createUserAndAssociatedWallet(provider.connection);
-
     pda = await getPdaParams(provider.connection, usdcAddress);
-  });
+  };
 
   it("Initialize the presale", async () => {
+    await init();
     const [, adminBalancePre] = await readAccount(adminWallet, provider);
 
     assert.equal(adminBalancePre, "7000000000000");
@@ -205,7 +203,14 @@ describe("presale", () => {
       "Current State After",
       (
         await program.account.preSaleDetails.fetch(pda.presalePDA)
-      ).roundOneAllocation.toString()
+      ).roundOneAllocationRemaining.toString()
+    );
+
+    console.log(
+      "Presale Owner",
+      (
+        await program.account.preSaleDetails.fetch(pda.presalePDA)
+      ).owner.toString()
     );
 
     // Assert that 6000 usdc were moved from admin's account to the presale vault.
@@ -213,135 +218,38 @@ describe("presale", () => {
     assert.equal(adminBalancePost, "1000000000000");
     const [, dlVaultBalancePost] = await readAccount(pda.dlVault, provider);
     assert.equal(dlVaultBalancePost, "6000000000000");
-
-    // // Create a token account for Bob.
-    // const bobTokenAccount = await spl.getAssociatedTokenAddress(
-    //   mintAddress,
-    //   bob.publicKey,
-    //   false,
-    //   spl.TOKEN_PROGRAM_ID,
-    //   spl.ASSOCIATED_TOKEN_PROGRAM_ID
-    // );
-    // console.log("Bob Associated Account", bobTokenAccount);
-
-    // const tx2 = await program.methods
-    //   .completeGrant(pda.idx)
-    //   .accounts({
-    //     applicationState: pda.stateKey,
-    //     escrowWalletState: pda.escrowWalletKey,
-    //     walletToDepositTo: bobTokenAccount,
-    //     userSending: admin.publicKey,
-    //     userReceiving: bob.publicKey,
-    //     mintOfTokenBeingSent: mintAddress,
-
-    //     systemProgram: anchor.web3.SystemProgram.programId,
-    //     tokenProgram: spl.TOKEN_PROGRAM_ID,
-    //     associatedTokenProgram: spl.ASSOCIATED_TOKEN_PROGRAM_ID,
-    //     // rent: anchor.web3.SYSVAR_RENT_PUBKEY,
-    //   })
-    //   .signers([bob])
-    //   .rpc();
-
-    // console.log("Complete Grant transaction signature", tx2);
-
-    // // Assert that 20 tokens were sent back.
-    // const [, bobBalance] = await readAccount(bobTokenAccount, provider);
-    // assert.equal(bobBalance, "20000000");
-    // // // Assert that escrow was correctly closed.
-    // try {
-    //   const [info, balance] = await readAccount(pda.escrowWalletKey, provider);
-    //   console.log("===========>", info, balance);
-    //   return assert.fail("Account should be closed");
-    // } catch (e) {
-    //   assert.equal(
-    //     e.message,
-    //     "Cannot read properties of null (reading 'data')"
-    //   );
-    // }
-    // // Fetch the details of Application State account
-    // console.log(
-    //   "Current State After",
-    //   (await program.account.details.fetch(pda.stateKey)).stage
-    // );
   });
 
-  // it.only("can pull back funds once they are deposited", async () => {
-  //   const [, adminBalancePre] = await readAccount(adminWallet, provider);
-  //   assert.equal(adminBalancePre, "1337000000");
-  //   const amount = new anchor.BN(20000000);
+  it("Starting Round", async () => {
+    const tx = await program.methods
+      .startNextRound()
+      .accounts({
+        presaleInfo: pda.presalePDA,
+        tokenVault: pda.dlVault,
+        admin: admin.publicKey,
+        mintOfTokenProgramSent: dlAddress,
+        tokenProgram: spl.TOKEN_PROGRAM_ID,
+        systemProgram: anchor.web3.SystemProgram.programId,
+        associatedTokenProgram: spl.ASSOCIATED_TOKEN_PROGRAM_ID,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+      })
+      .signers([admin])
+      .rpc();
 
-  //   const tx = await program.methods
-  //     .initializeNewGrant(pda.idx, amount)
-  //     .accounts({
-  //       applicationState: pda.stateKey,
-  //       escrowWalletState: pda.escrowWalletKey,
-  //       userSending: admin.publicKey,
-  //       userReceiving: bob.publicKey,
-  //       mintOfTokenBeingSent: mintAddress,
-  //       walletToWithdrawFrom: adminWallet,
+    console.log(`Round One has been started successfully`);
 
-  //       systemProgram: anchor.web3.SystemProgram.programId,
-  //       // rent: anchor.web3.SYSVAR_RENT_PUBKEY,
-  //       tokenProgram: spl.TOKEN_PROGRAM_ID,
-  //     })
-  //     .signers([admin])
-  //     .rpc();
+    console.log("Round start tx", tx);
 
-  //   console.log(
-  //     `Initialized a new Safe Pay instance. admin will pay bob 20 tokens`
-  //   );
+    const [, dlVaultBalancePost] = await readAccount(pda.dlVault, provider);
+    console.log("Vault Balance: " + dlVaultBalancePost);
 
-  //   console.log("Initialize New Grant transaction signature", tx);
+    // assert.equal(dlVaultBalancePost, "6000000000000");
 
-  //   // Assert that 20 tokens were moved from admin's account to the escrow.
-  //   const [, adminBalancePost] = await readAccount(adminWallet, provider);
-  //   assert.equal(adminBalancePost, "1317000000");
-  //   const [, escrowBalancePost] = await readAccount(
-  //     pda.escrowWalletKey,
-  //     provider
-  //   );
-  //   assert.equal(escrowBalancePost, "20000000");
-
-  //   // //trying to send funds in the different account that is not owned by admin
-  //   // let maliciousWallet: anchor.web3.PublicKey;
-  //   // [, maliciousWallet] = await createUserAndAssociatedWallet(
-  //   //   provider.connection,
-  //   //   mintAddress
-  //   // );
-
-  //   // Withdraw the funds back
-  //   const tx2 = await program.methods
-  //     .pullBack(pda.idx)
-  //     .accounts({
-  //       applicationState: pda.stateKey,
-  //       escrowWalletState: pda.escrowWalletKey,
-  //       refundWallet: adminWallet,
-  //       userSending: admin.publicKey,
-  //       userReceiving: bob.publicKey,
-  //       mintOfTokenBeingSent: mintAddress,
-
-  //       systemProgram: anchor.web3.SystemProgram.programId,
-  //       tokenProgram: spl.TOKEN_PROGRAM_ID,
-  //       // rent: anchor.web3.SYSVAR_RENT_PUBKEY,
-  //     })
-  //     .signers([bob])
-  //     .rpc();
-
-  //   console.log("Pull Back transaction signature", tx2);
-
-  //   // Assert that 20 tokens were sent back.
-  //   const [, adminBalanceRefund] = await readAccount(adminWallet, provider);
-  //   assert.equal(adminBalanceRefund, "1337000000");
-  //   // // Assert that escrow was correctly closed.
-  //   try {
-  //     const [info, balance] = await readAccount(pda.escrowWalletKey, provider);
-  //     console.log("===========>", info, balance);
-  //     return assert.fail("Account should be closed");
-  //   } catch (e) {
-  //     assert.equal(
-  //       e.message,
-  //       "Cannot read properties of null (reading 'data')"
-  //     );
-  //   }
-  // });
+    console.log(
+      "Presale Owner",
+      (
+        await program.account.preSaleDetails.fetch(pda.presalePDA)
+      ).stage.toString()
+    );
+  });
 });
