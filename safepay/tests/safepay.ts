@@ -118,7 +118,7 @@ describe("safepay", () => {
         user.publicKey
       );
 
-      mintTo(
+      await mintTo(
         connection,
         payer.payer,
         mint,
