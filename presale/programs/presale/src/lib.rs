@@ -78,12 +78,9 @@ pub mod presale {
         let info = &mut ctx.accounts.presale_info;
         let current_stage = Stage::from(info.stage)?;
         if current_stage == Stage::PresaleEnded {
-            msg!(
-                "Stage is invalid, state stage is {}",
-                ctx.accounts.presale_info.stage
-            );
-            return Err(ErrorCode::StageInvalid.into());
+            return Err(ErrorCode::PresaleEnded.into());
         }
+
         if current_stage != Stage::PresaleNotStartedYet {
             //checking for burning the remaining round allocation
             let info_bump = ctx.bumps.presale_info;
@@ -151,6 +148,61 @@ pub mod presale {
         }
 
         info.stage = info.stage.checked_add(1).unwrap();
+
+        Ok(())
+    }
+    pub fn buy_tokens(ctx: Context<BuyTokens>, usdc_token: u64) -> Result<()> {
+        let info = &mut ctx.accounts.presale_info;
+        let current_stage = Stage::from(info.stage)?;
+
+        if current_stage == Stage::PresaleNotStartedYet {
+            return Err(ErrorCode::PresaleNotStartedYet.into());
+        }
+
+        if current_stage == Stage::PresaleEnded {
+            return Err(ErrorCode::PresaleEnded.into());
+        }
+
+        transfer(
+            CpiContext::new(
+                ctx.accounts.token_program.to_account_info(),
+                Transfer {
+                    from: ctx.accounts.buyer_usdc_account.to_account_info(),
+                    to: ctx.accounts.usdc_vault.to_account_info(),
+                    authority: ctx.accounts.buyer.to_account_info(),
+                },
+            ),
+            usdc_token,
+        )?;
+
+        if current_stage == Stage::RoundOne {
+            let final_amount = info.round_one_price.checked_mul(usdc_token).unwrap();
+            if final_amount > info.round_one_allocation_remaining {
+                return Err(ErrorCode::InsufficientAllocation.into());
+            }
+            let info_bump = ctx.bumps.presale_info;
+
+            let signer: &[&[&[u8]]] = &[&[b"presale_info".as_ref(), &[info_bump]]];
+            transfer(
+                CpiContext::new_with_signer(
+                    ctx.accounts.token_program.to_account_info(),
+                    Transfer {
+                        from: ctx.accounts.token_vault.to_account_info(),
+                        to: ctx.accounts.wallet_to_deposit_to.to_account_info(),
+                        authority: info.to_account_info(),
+                    },
+                    signer,
+                ),
+                final_amount,
+            )?;
+
+            info.round_one_allocation_remaining = info
+                .round_one_allocation_remaining
+                .checked_sub(final_amount)
+                .unwrap();
+        } else if current_stage == Stage::RoundTwo {
+        } else {
+        }
 
         Ok(())
     }
@@ -264,6 +316,58 @@ pub struct StartNextRound<'info> {
     token_program: Program<'info, Token>,
 }
 
+#[derive(Accounts)]
+pub struct BuyTokens<'info> {
+    // Derived PDAs
+    #[account(
+        mut,
+         seeds=[b"presale_info".as_ref()],
+         bump
+     )]
+    presale_info: Account<'info, PreSaleDetails>,
+
+    #[account(
+         mut,
+         seeds=[b"usdc_vault".as_ref()],
+         bump
+     )]
+    usdc_vault: Account<'info, TokenAccount>,
+
+    #[account(
+         mut,
+         seeds=[b"token_vault".as_ref()],
+         bump
+     )]
+    token_vault: Account<'info, TokenAccount>,
+
+    #[account(
+        init_if_needed,
+        payer = buyer,
+        associated_token::mint = mint_of_token_program_sent,
+        associated_token::authority = buyer,
+    )]
+    wallet_to_deposit_to: Account<'info, TokenAccount>, // Bob's DL token wallet (will be initialized if it did not exist)
+
+    #[account(
+        mut,
+        associated_token::mint = mint_of_token_user_send,
+        associated_token::authority = buyer,
+    )]
+    pub buyer_usdc_account: Account<'info, TokenAccount>,
+
+    // Users and accounts in the system
+    #[account(mut)]
+    buyer: Signer<'info>, // Bob
+
+    mint_of_token_user_send: Account<'info, Mint>, // USDC
+    mint_of_token_program_sent: Account<'info, Mint>, // DL token
+
+    // Application level accounts
+    system_program: Program<'info, System>,
+    token_program: Program<'info, Token>,
+    associated_token_program: Program<'info, AssociatedToken>,
+}
+
 #[account]
 pub struct PreSaleDetails {
     stage: u8,
@@ -282,4 +386,10 @@ pub enum ErrorCode {
     StageInvalid,
     #[msg("Unauthorized admin")]
     UnauthorizedAdmin,
+    #[msg("Presale has been ended")]
+    PresaleEnded,
+    #[msg("Presale is not started yet")]
+    PresaleNotStartedYet,
+    #[msg("Remaining allocation is insufficient")]
+    InsufficientAllocation,
 }

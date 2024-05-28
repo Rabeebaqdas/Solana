@@ -214,9 +214,7 @@ describe("presale", () => {
     // Fetch the details of Presale Info account
     console.log(
       "Presale Info",
-      (
-        await program.account.preSaleDetails.fetch(pda.presalePDA)
-      ).toString()
+      await program.account.preSaleDetails.fetch(pda.presalePDA)
     );
 
     console.log(
