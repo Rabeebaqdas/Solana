@@ -7,6 +7,29 @@ use anchor_spl::{
 };
 declare_id!("HCXo1ZoY2ALW9dWDBjU1NfwHoaEEDsZ9g1FwrNfRC7GC");
 
+fn burn_tokens<'info>(
+    mint_of_token_program_sent: AccountInfo<'info>,
+    token_vault: &mut Account<'info, TokenAccount>,
+    info: AccountInfo<'info>,
+    token_program: AccountInfo<'info>,
+    amount_to_burn: u64,
+    signer: &[&[&[u8]]],
+) -> Result<()> {
+    burn(
+        CpiContext::new_with_signer(
+            token_program.to_account_info(),
+            Burn {
+                mint: mint_of_token_program_sent.to_account_info(),
+                from: token_vault.to_account_info(),
+                authority: info.to_account_info(),
+            },
+            signer,
+        ),
+        amount_to_burn,
+    )?;
+    Ok(())
+}
+
 #[program]
 pub mod presale {
     use super::*;
@@ -57,54 +80,45 @@ pub mod presale {
         }
         if current_stage != Stage::PresaleNotStartedYet {
             //checking for burning the remaining round allocation
-            let bump_vault = ctx.bumps.presale_info;
-            let signer: &[&[&[u8]]] = &[&[b"presale_info".as_ref(), &[bump_vault]]];
+            let info_bump = ctx.bumps.presale_info;
+            let signer: &[&[&[u8]]] = &[&[b"presale_info".as_ref(), &[info_bump]]];
             if current_stage == Stage::RoundOne {
                 if info.round_one_allocation_remaining != 0 {
-                    burn(
-                        CpiContext::new_with_signer(
-                            ctx.accounts.token_program.to_account_info(),
-                            Burn {
-                                mint: ctx.accounts.mint_of_token_program_sent.to_account_info(),
-                                from: ctx.accounts.token_vault.to_account_info(),
-                                authority: info.to_account_info(),
-                            },
-                            signer,
-                        ),
+                    burn_tokens(
+                        ctx.accounts.mint_of_token_program_sent.to_account_info(),
+                        &mut ctx.accounts.token_vault,
+                        info.to_account_info(),
+                        ctx.accounts.token_program.to_account_info(),
                         info.round_one_allocation_remaining,
+                        signer,
                     )?;
+
                     info.round_one_allocation_remaining = 0;
                 }
             } else if current_stage == Stage::RoundTwo {
                 if info.round_two_allocation_remaining != 0 {
-                    burn(
-                        CpiContext::new_with_signer(
-                            ctx.accounts.token_program.to_account_info(),
-                            Burn {
-                                mint: ctx.accounts.mint_of_token_program_sent.to_account_info(),
-                                from: ctx.accounts.token_vault.to_account_info(),
-                                authority: info.to_account_info(),
-                            },
-                            signer,
-                        ),
+                    burn_tokens(
+                        ctx.accounts.mint_of_token_program_sent.to_account_info(),
+                        &mut ctx.accounts.token_vault,
+                        info.to_account_info(),
+                        ctx.accounts.token_program.to_account_info(),
                         info.round_two_allocation_remaining,
+                        signer,
                     )?;
+
                     info.round_two_allocation_remaining = 0;
                 }
             } else {
                 if info.round_three_allocation_remaining != 0 {
-                    burn(
-                        CpiContext::new_with_signer(
-                            ctx.accounts.token_program.to_account_info(),
-                            Burn {
-                                mint: ctx.accounts.mint_of_token_program_sent.to_account_info(),
-                                from: ctx.accounts.token_vault.to_account_info(),
-                                authority: info.to_account_info(),
-                            },
-                            signer,
-                        ),
+                    burn_tokens(
+                        ctx.accounts.mint_of_token_program_sent.to_account_info(),
+                        &mut ctx.accounts.token_vault,
+                        info.to_account_info(),
+                        ctx.accounts.token_program.to_account_info(),
                         info.round_three_allocation_remaining,
+                        signer,
                     )?;
+    
                     info.round_three_allocation_remaining = 0;
                 }
                 let should_close = {
@@ -242,7 +256,6 @@ pub struct StartNextRound<'info> {
     admin: Signer<'info>, // The person who is initializing the presale
 
     token_program: Program<'info, Token>,
-
 }
 
 #[account]

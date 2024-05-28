@@ -220,7 +220,7 @@ describe("presale", () => {
     assert.equal(dlVaultBalancePost, "6000000000000");
   });
 
-  it("Starting Round", async () => {
+  it("Starting Round One", async () => {
     const tx = await program.methods
       .startNextRound()
       .accounts({
@@ -232,8 +232,25 @@ describe("presale", () => {
       })
       .signers([admin])
       .rpc();
-    console.log(`Round One has been started successfully`);
-    await program.methods
+    console.log(`Round One has been started successfully`,tx)
+
+
+    const [, dlVaultBalancePost] = await readAccount(pda.dlVault, provider);
+    console.log("Vault Balance: " + dlVaultBalancePost);
+
+    assert.equal(dlVaultBalancePost, "6000000000000");
+
+    console.log(
+      "Presale Stage",
+      (
+        await program.account.preSaleDetails.fetch(pda.presalePDA)
+      ).stage.toString()
+    );
+
+  });
+
+  it("Starting Round Two", async () => {
+    const tx = await program.methods
       .startNextRound()
       .accounts({
         presaleInfo: pda.presalePDA,
@@ -244,8 +261,24 @@ describe("presale", () => {
       })
       .signers([admin])
       .rpc();
-    console.log(`Round two has been started successfully`);
-    await program.methods
+  
+    console.log(`Round two has been started successfully`, tx);
+
+    const [, dlVaultBalancePost] = await readAccount(pda.dlVault, provider);
+    console.log("Vault Balance: " + dlVaultBalancePost);
+
+    assert.equal(dlVaultBalancePost, "5000000000000");
+
+    console.log(
+      "Presale Stage",
+      (
+        await program.account.preSaleDetails.fetch(pda.presalePDA)
+      ).stage.toString()
+    );
+  });
+
+  it("Starting Round Three", async () => {
+    const tx = await program.methods
       .startNextRound()
       .accounts({
         presaleInfo: pda.presalePDA,
@@ -256,9 +289,25 @@ describe("presale", () => {
       })
       .signers([admin])
       .rpc();
-    console.log(`Round three has been started successfully`);
+   
+    console.log(`Round three has been started successfully`, tx);
 
-    await program.methods
+
+    const [, dlVaultBalancePost] = await readAccount(pda.dlVault, provider);
+    console.log("Vault Balance: " + dlVaultBalancePost);
+
+    assert.equal(dlVaultBalancePost, "3000000000000");
+
+    console.log(
+      "Presale Stage",
+      (
+        await program.account.preSaleDetails.fetch(pda.presalePDA)
+      ).stage.toString()
+    );
+  });
+
+  it("Ending Presale", async () => {
+    const tx = await program.methods
       .startNextRound()
       .accounts({
         presaleInfo: pda.presalePDA,
@@ -269,14 +318,8 @@ describe("presale", () => {
       })
       .signers([admin])
       .rpc();
-    console.log(`Presale has been ended`);
-
-    console.log("Round start tx", tx);
-
-    // const [, dlVaultBalancePost] = await readAccount(pda.dlVault, provider);
-    // console.log("Vault Balance: " + dlVaultBalancePost);
-
-    // assert.equal(dlVaultBalancePost, "6000000000000");
+ 
+    console.log(`Presale has been ended`,tx);
 
     try {
       const [info, balance] = await readAccount(pda.dlVault, provider);
