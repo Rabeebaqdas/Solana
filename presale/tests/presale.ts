@@ -258,6 +258,33 @@ describe("presale", () => {
     );
   });
 
+  it("Alice Buying Tokens from Round One", async () => {
+    const tx = await program.methods
+      .buyTokens(new anchor.BN(10000000000))
+      .accounts({
+        presaleInfo: pda.presalePDA,
+        tokenVault: pda.dlVault,
+        admin: admin.publicKey,
+        mintOfTokenProgramSent: dlAddress,
+        tokenProgram: spl.TOKEN_PROGRAM_ID,
+      })
+      .signers([admin])
+      .rpc();
+    console.log(`Round One has been started successfully`, tx);
+
+    const [, dlVaultBalancePost] = await readAccount(pda.dlVault, provider);
+    console.log("Vault Balance: " + dlVaultBalancePost);
+
+    assert.equal(dlVaultBalancePost, "6000000000000");
+
+    console.log(
+      "Presale Stage",
+      (
+        await program.account.preSaleDetails.fetch(pda.presalePDA)
+      ).stage.toString()
+    );
+  });
+
   it("Starting Round Two", async () => {
     const tx = await program.methods
       .startNextRound()
