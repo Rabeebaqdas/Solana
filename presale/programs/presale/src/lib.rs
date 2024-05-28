@@ -39,11 +39,17 @@ pub mod presale {
         round_one_allocation: u64,
         round_two_allocation: u64,
         round_three_allocation: u64,
+        round_one_price: u64,
+        round_two_price: u64,
+        round_three_price: u64,
     ) -> Result<()> {
         let info = &mut ctx.accounts.presale_info;
         info.round_one_allocation_remaining = round_one_allocation;
         info.round_two_allocation_remaining = round_two_allocation;
         info.round_three_allocation_remaining = round_three_allocation;
+        info.round_one_price = round_one_price;
+        info.round_two_price = round_two_price;
+        info.round_three_price = round_three_price;
         info.owner = ctx.accounts.admin.key();
 
         let total_amount_to_be_deposit = (round_one_allocation
@@ -262,6 +268,9 @@ pub struct StartNextRound<'info> {
 pub struct PreSaleDetails {
     stage: u8,
     owner: Pubkey,
+    round_one_price: u64,
+    round_two_price: u64,
+    round_three_price: u64,
     round_one_allocation_remaining: u64,
     round_two_allocation_remaining: u64,
     round_three_allocation_remaining: u64,

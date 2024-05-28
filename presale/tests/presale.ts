@@ -17,6 +17,9 @@ interface PDAParameters {
   firstAllocation: anchor.BN;
   secondAllocation: anchor.BN;
   thirdAllocation: anchor.BN;
+  roundOnePrice: anchor.BN;
+  roundTwoPrice: anchor.BN;
+  roundThreePrice: anchor.BN;
 }
 
 describe("presale", () => {
@@ -40,6 +43,10 @@ describe("presale", () => {
     const secondAllocation = new anchor.BN(2000000000000);
     const thirdAllocation = new anchor.BN(3000000000000);
 
+    const roundOnePrice = new anchor.BN(1000000000);
+    const roundTwoPrice = new anchor.BN(2000000000);
+    const roundThreePrice = new anchor.BN(3000000000);
+
     let [presalePDA] = PublicKey.findProgramAddressSync(
       [Buffer.from("presale_info")],
       program.programId
@@ -62,6 +69,9 @@ describe("presale", () => {
       presalePDA: presalePDA,
       usdcVault: usdcVault,
       dlVault: dlVault,
+      roundOnePrice: roundOnePrice,
+      roundTwoPrice: roundTwoPrice,
+      roundThreePrice: roundThreePrice,
     };
   };
 
@@ -176,7 +186,10 @@ describe("presale", () => {
       .initialize(
         pda.firstAllocation,
         pda.secondAllocation,
-        pda.thirdAllocation
+        pda.thirdAllocation,
+        pda.roundOnePrice,
+        pda.roundTwoPrice,
+        pda.roundThreePrice
       )
       .accounts({
         presaleInfo: pda.presalePDA,
@@ -198,12 +211,12 @@ describe("presale", () => {
 
     console.log("Initialize New Grant transaction signature", tx);
 
-    // Fetch the details of Application State account
+    // Fetch the details of Presale Info account
     console.log(
-      "Current State After",
+      "Presale Info",
       (
         await program.account.preSaleDetails.fetch(pda.presalePDA)
-      ).roundOneAllocationRemaining.toString()
+      ).toString()
     );
 
     console.log(
@@ -232,8 +245,7 @@ describe("presale", () => {
       })
       .signers([admin])
       .rpc();
-    console.log(`Round One has been started successfully`,tx)
-
+    console.log(`Round One has been started successfully`, tx);
 
     const [, dlVaultBalancePost] = await readAccount(pda.dlVault, provider);
     console.log("Vault Balance: " + dlVaultBalancePost);
@@ -246,7 +258,6 @@ describe("presale", () => {
         await program.account.preSaleDetails.fetch(pda.presalePDA)
       ).stage.toString()
     );
-
   });
 
   it("Starting Round Two", async () => {
@@ -261,7 +272,7 @@ describe("presale", () => {
       })
       .signers([admin])
       .rpc();
-  
+
     console.log(`Round two has been started successfully`, tx);
 
     const [, dlVaultBalancePost] = await readAccount(pda.dlVault, provider);
@@ -289,9 +300,8 @@ describe("presale", () => {
       })
       .signers([admin])
       .rpc();
-   
-    console.log(`Round three has been started successfully`, tx);
 
+    console.log(`Round three has been started successfully`, tx);
 
     const [, dlVaultBalancePost] = await readAccount(pda.dlVault, provider);
     console.log("Vault Balance: " + dlVaultBalancePost);
@@ -318,8 +328,8 @@ describe("presale", () => {
       })
       .signers([admin])
       .rpc();
- 
-    console.log(`Presale has been ended`,tx);
+
+    console.log(`Presale has been ended`, tx);
 
     try {
       const [info, balance] = await readAccount(pda.dlVault, provider);
