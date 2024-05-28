@@ -58,7 +58,7 @@ pub mod presale {
         if current_stage != Stage::PresaleNotStartedYet {
             //checking for burning the remaining round allocation
             let bump_vault = ctx.bumps.presale_info;
-            let signer: &[&[&[u8]]] = &[&[b"state".as_ref(), &[bump_vault]]];
+            let signer: &[&[&[u8]]] = &[&[b"presale_info".as_ref(), &[bump_vault]]];
             if current_stage == Stage::RoundOne {
                 if info.round_one_allocation_remaining != 0 {
                     burn(
@@ -114,7 +114,7 @@ pub mod presale {
 
                 if should_close {
                     let ca = CloseAccount {
-                        account: ctx.accounts.token_program.to_account_info(),
+                        account: ctx.accounts.token_vault.to_account_info(),
                         destination: ctx.accounts.admin.to_account_info(),
                         authority: info.to_account_info(),
                     };
@@ -241,10 +241,8 @@ pub struct StartNextRound<'info> {
         )]
     admin: Signer<'info>, // The person who is initializing the presale
 
-    system_program: Program<'info, System>,
     token_program: Program<'info, Token>,
-    associated_token_program: Program<'info, AssociatedToken>,
-    rent: Sysvar<'info, Rent>,
+
 }
 
 #[account]

@@ -5,7 +5,7 @@ import * as spl from "@solana/spl-token";
 import {
   createMint,
   getOrCreateAssociatedTokenAccount,
-  mintTo
+  mintTo,
 } from "@solana/spl-token";
 import { Presale } from "../target/types/presale";
 import { assert } from "chai";
@@ -229,24 +229,68 @@ describe("presale", () => {
         admin: admin.publicKey,
         mintOfTokenProgramSent: dlAddress,
         tokenProgram: spl.TOKEN_PROGRAM_ID,
-        systemProgram: anchor.web3.SystemProgram.programId,
-        associatedTokenProgram: spl.ASSOCIATED_TOKEN_PROGRAM_ID,
-        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
       })
       .signers([admin])
       .rpc();
-
     console.log(`Round One has been started successfully`);
+    await program.methods
+      .startNextRound()
+      .accounts({
+        presaleInfo: pda.presalePDA,
+        tokenVault: pda.dlVault,
+        admin: admin.publicKey,
+        mintOfTokenProgramSent: dlAddress,
+        tokenProgram: spl.TOKEN_PROGRAM_ID,
+      })
+      .signers([admin])
+      .rpc();
+    console.log(`Round two has been started successfully`);
+    await program.methods
+      .startNextRound()
+      .accounts({
+        presaleInfo: pda.presalePDA,
+        tokenVault: pda.dlVault,
+        admin: admin.publicKey,
+        mintOfTokenProgramSent: dlAddress,
+        tokenProgram: spl.TOKEN_PROGRAM_ID,
+      })
+      .signers([admin])
+      .rpc();
+    console.log(`Round three has been started successfully`);
+
+    await program.methods
+      .startNextRound()
+      .accounts({
+        presaleInfo: pda.presalePDA,
+        tokenVault: pda.dlVault,
+        admin: admin.publicKey,
+        mintOfTokenProgramSent: dlAddress,
+        tokenProgram: spl.TOKEN_PROGRAM_ID,
+      })
+      .signers([admin])
+      .rpc();
+    console.log(`Presale has been ended`);
 
     console.log("Round start tx", tx);
 
-    const [, dlVaultBalancePost] = await readAccount(pda.dlVault, provider);
-    console.log("Vault Balance: " + dlVaultBalancePost);
+    // const [, dlVaultBalancePost] = await readAccount(pda.dlVault, provider);
+    // console.log("Vault Balance: " + dlVaultBalancePost);
 
     // assert.equal(dlVaultBalancePost, "6000000000000");
 
+    try {
+      const [info, balance] = await readAccount(pda.dlVault, provider);
+      console.log("===========>", info, balance);
+      return assert.fail("Account should be closed");
+    } catch (e) {
+      assert.equal(
+        e.message,
+        "Cannot read properties of null (reading 'data')"
+      );
+    }
+
     console.log(
-      "Presale Owner",
+      "Presale Stage",
       (
         await program.account.preSaleDetails.fetch(pda.presalePDA)
       ).stage.toString()
