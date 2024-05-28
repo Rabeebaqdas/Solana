@@ -148,8 +148,6 @@ pub mod presale {
 
         Ok(())
     }
-
-
 }
 #[derive(Clone, Copy, PartialEq)]
 pub enum Stage {
