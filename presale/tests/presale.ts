@@ -1,76 +1,145 @@
 import * as anchor from "@project-serum/anchor";
 import { Program } from "@project-serum/anchor";
-import * as spl from "@solana/spl-token";
-import { Presale } from "../target/types/presale";
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
+import * as spl from "@solana/spl-token";
 import {
   createMint,
   getOrCreateAssociatedTokenAccount,
   mintTo,
 } from "@solana/spl-token";
+import { Presale } from "../target/types/presale";
+import { assert } from "chai";
+
+interface PDAParameters {
+  usdcVault: anchor.web3.PublicKey;
+  dlVault: anchor.web3.PublicKey;
+  presalePDA: anchor.web3.PublicKey;
+  firstAllocation: anchor.BN;
+  secondAllocation: anchor.BN;
+  thirdAllocation: anchor.BN;
+}
+
 describe("presale", () => {
   // Configure the client to use the local cluster.
   const provider = anchor.AnchorProvider.env();
-  let userAssociatedTokenAccount;    
   anchor.setProvider(provider);
-  const payer = provider.wallet as anchor.Wallet;
   const connection = new Connection("http://127.0.0.1:8899", "confirmed");
-  const usdcmintKeyPair = Keypair.generate();
-  const dlmintKeyPair = Keypair.generate();
   const program = anchor.workspace.Presale as Program<Presale>;
+  let usdcAddress: anchor.web3.PublicKey;
+  let dlAddress: anchor.web3.PublicKey;
+  let admin: anchor.web3.Keypair;
+  let adminWallet: anchor.web3.PublicKey;
+  // let bob: anchor.web3.Keypair;
+  let pda: PDAParameters;
 
-  async function createMintToken(token: string) {
-    if (token == "usdc") {
-      const usdcmint = await createMint(
-        connection,
-        payer.payer,
-        payer.publicKey,
-        payer.publicKey,
-        9,
-        usdcmintKeyPair
-      );
-      console.log(usdcmint);
-      console.log("USDC token",usdcmint);
+  const getPdaParams = async (
+    connection: anchor.web3.Connection,
+    mint: anchor.web3.PublicKey
+  ): Promise<PDAParameters> => {
+    const firstAllocation = new anchor.BN(1000000000000);
+    const secondAllocation = new anchor.BN(2000000000000);
+    const thirdAllocation = new anchor.BN(3000000000000);
 
-      return usdcmint;
-    } else {
-      const tokenmint = await createMint(
-        connection,
-        payer.payer,
-        payer.publicKey,
-        payer.publicKey,
-        9,
-        dlmintKeyPair
-      );
-      console.log("Decrypted Labs token",tokenmint);
+    let [presalePDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("presale_info")],
+      program.programId
+    );
 
+    let [usdcVault] = PublicKey.findProgramAddressSync(
+      [Buffer.from("usdc_vault")],
+      program.programId
+    );
+
+    let [dlVault] = PublicKey.findProgramAddressSync(
+      [Buffer.from("token_vault")],
+      program.programId
+    );
+
+    return {
+      firstAllocation: firstAllocation,
+      secondAllocation: secondAllocation,
+      thirdAllocation: thirdAllocation,
+      presalePDA: presalePDA,
+      usdcVault: usdcVault,
+      dlVault: dlVault,
+    };
+  };
+
+  const createToken = async (
+    connection: anchor.web3.Connection
+  ): Promise<anchor.web3.PublicKey> => {
+    const mintAddress = Keypair.generate();
+    const payer = provider.wallet as anchor.Wallet;
+    // making USDC token
+    const mint = await createMint(
+      connection,
+      payer.payer,
+      payer.publicKey,
+      payer.publicKey,
+      9,
+      mintAddress
+    );
+
+    console.log(mint);
+
+    console.log(`[${mintAddress.publicKey}] Created new mint account`);
+    return mintAddress.publicKey;
+  };
+
+  const createUserAndAssociatedWallet = async (
+    connection: anchor.web3.Connection,
+    mint?: anchor.web3.PublicKey
+  ): Promise<[anchor.web3.Keypair, anchor.web3.PublicKey | undefined]> => {
+    console.log(
+      "----------------------------------------------------------------"
+    );
+
+    const user = Keypair.generate();
+    const payer = provider.wallet as anchor.Wallet;
+    let userAssociatedTokenAccount = undefined;
+    // Fund user with some SOL
+    let txFund = new anchor.web3.Transaction();
+    txFund.add(
+      anchor.web3.SystemProgram.transfer({
+        fromPubkey: provider.wallet.publicKey,
+        toPubkey: user.publicKey,
+        lamports: 5 * anchor.web3.LAMPORTS_PER_SOL,
+      })
+    );
+    const sigTxFund = await provider.sendAndConfirm(txFund);
+
+    console.log(
+      `[${user.publicKey.toBase58()}] Funded new account with 5 SOL: ${sigTxFund}`
+    );
+    if (mint) {
       //making associated token account to hold the user's tokens
-       userAssociatedTokenAccount = await getOrCreateAssociatedTokenAccount(
+      userAssociatedTokenAccount = await getOrCreateAssociatedTokenAccount(
         connection,
         payer.payer,
-        tokenmint,
-        payer.publicKey
+        mint,
+        user.publicKey
       );
 
-     let result = await mintTo(
+      await mintTo(
         connection,
         payer.payer,
-        tokenmint,
+        mint,
         userAssociatedTokenAccount.address,
         payer.publicKey,
-        1000000000000
+        7000000000000
       );
-      console.log("Mint to result:", result);
       console.log(
         `[${
           userAssociatedTokenAccount.address
-        }] New associated account for mint ${tokenmint.toBase58()}`
+        }] New associated account for mint ${mint.toBase58()}`
       );
-      return tokenmint;
     }
+    console.log(
+      "----------------------------------------------------------------"
+    );
 
-
-  }
+    return [user, userAssociatedTokenAccount?.address];
+  };
 
   const readAccount = async (
     accountPublicKey: anchor.web3.PublicKey,
@@ -85,50 +154,194 @@ describe("presale", () => {
     return [accountInfo, accountInfo.amount.toString()];
   };
 
-  it("Is initialized!", async () => {
-    let usdcmint = await createMintToken("usdc");
-    let tokenmint = await createMintToken("DecryptedLabs");
-    
-    // getting the pda of users stake info account
-    let [presaleInfo] = PublicKey.findProgramAddressSync(
-      [Buffer.from("presale_info")],
-      program.programId
+  beforeEach(async () => {
+    usdcAddress = await createToken(provider.connection);
+    dlAddress = await createToken(provider.connection);
+
+    [admin, adminWallet] = await createUserAndAssociatedWallet(
+      provider.connection,
+      dlAddress
     );
 
-    // getting the pda of users stake info account
-    let [usdcVault] = PublicKey.findProgramAddressSync(
-      [Buffer.from("usdc_vault")],
-      program.programId
-    );
+    // let _rest;
+    // [bob, ..._rest] = await createUserAndAssociatedWallet(provider.connection);
 
-    // getting the pda of users stake info account
-    let [tokenVault] = PublicKey.findProgramAddressSync(
-      [Buffer.from("token_vault")],
-      program.programId
-    );
-    console.log("Done with minting")
-    const [, depositorBalance] = await readAccount(userAssociatedTokenAccount.address, provider);
-    console.log("Depositor Balance", depositorBalance)
-    // Add your test here.
+    pda = await getPdaParams(provider.connection, usdcAddress);
+  });
+
+  it("Initialize the presale", async () => {
+    const [, adminBalancePre] = await readAccount(adminWallet, provider);
+
+    assert.equal(adminBalancePre, "7000000000000");
+
     const tx = await program.methods
       .initialize(
-        new anchor.BN(10000000000),
-        new anchor.BN(50000000000),
-        new anchor.BN(1000000000000)
+        pda.firstAllocation,
+        pda.secondAllocation,
+        pda.thirdAllocation
       )
       .accounts({
-        presaleInfo: presaleInfo,
-        usdcVault: usdcVault,
-        tokenVault: tokenVault,
-        mintOfTokenUserSend: usdcmint,  
-        mintOfTokenProgramSent: tokenmint,  
-        walletOfDepositor: userAssociatedTokenAccount.address,  
-        admin: payer.publicKey,
+        presaleInfo: pda.presalePDA,
+        usdcVault: pda.usdcVault,
+        tokenVault: pda.dlVault,
+        admin: admin.publicKey,
+        walletOfDepositor: adminWallet,
+        mintOfTokenUserSend: usdcAddress,
+        mintOfTokenProgramSent: dlAddress,
         systemProgram: anchor.web3.SystemProgram.programId,
         tokenProgram: spl.TOKEN_PROGRAM_ID,
       })
-      .signers([payer.payer])
+      .signers([admin])
       .rpc();
-    console.log("Your transaction signature", tx);
+
+    console.log(
+      `Initialized a presale. admin has deposited 7000 in the presale contract`
+    );
+
+    console.log("Initialize New Grant transaction signature", tx);
+
+    // Fetch the details of Application State account
+    console.log(
+      "Current State After",
+      (
+        await program.account.preSaleDetails.fetch(pda.presalePDA)
+      ).roundOneAllocation.toString()
+    );
+
+    // Assert that 6000 usdc were moved from admin's account to the presale vault.
+    const [, adminBalancePost] = await readAccount(adminWallet, provider);
+    assert.equal(adminBalancePost, "1000000000000");
+    const [, dlVaultBalancePost] = await readAccount(pda.dlVault, provider);
+    assert.equal(dlVaultBalancePost, "6000000000000");
+
+    // // Create a token account for Bob.
+    // const bobTokenAccount = await spl.getAssociatedTokenAddress(
+    //   mintAddress,
+    //   bob.publicKey,
+    //   false,
+    //   spl.TOKEN_PROGRAM_ID,
+    //   spl.ASSOCIATED_TOKEN_PROGRAM_ID
+    // );
+    // console.log("Bob Associated Account", bobTokenAccount);
+
+    // const tx2 = await program.methods
+    //   .completeGrant(pda.idx)
+    //   .accounts({
+    //     applicationState: pda.stateKey,
+    //     escrowWalletState: pda.escrowWalletKey,
+    //     walletToDepositTo: bobTokenAccount,
+    //     userSending: admin.publicKey,
+    //     userReceiving: bob.publicKey,
+    //     mintOfTokenBeingSent: mintAddress,
+
+    //     systemProgram: anchor.web3.SystemProgram.programId,
+    //     tokenProgram: spl.TOKEN_PROGRAM_ID,
+    //     associatedTokenProgram: spl.ASSOCIATED_TOKEN_PROGRAM_ID,
+    //     // rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+    //   })
+    //   .signers([bob])
+    //   .rpc();
+
+    // console.log("Complete Grant transaction signature", tx2);
+
+    // // Assert that 20 tokens were sent back.
+    // const [, bobBalance] = await readAccount(bobTokenAccount, provider);
+    // assert.equal(bobBalance, "20000000");
+    // // // Assert that escrow was correctly closed.
+    // try {
+    //   const [info, balance] = await readAccount(pda.escrowWalletKey, provider);
+    //   console.log("===========>", info, balance);
+    //   return assert.fail("Account should be closed");
+    // } catch (e) {
+    //   assert.equal(
+    //     e.message,
+    //     "Cannot read properties of null (reading 'data')"
+    //   );
+    // }
+    // // Fetch the details of Application State account
+    // console.log(
+    //   "Current State After",
+    //   (await program.account.details.fetch(pda.stateKey)).stage
+    // );
   });
+
+  // it.only("can pull back funds once they are deposited", async () => {
+  //   const [, adminBalancePre] = await readAccount(adminWallet, provider);
+  //   assert.equal(adminBalancePre, "1337000000");
+  //   const amount = new anchor.BN(20000000);
+
+  //   const tx = await program.methods
+  //     .initializeNewGrant(pda.idx, amount)
+  //     .accounts({
+  //       applicationState: pda.stateKey,
+  //       escrowWalletState: pda.escrowWalletKey,
+  //       userSending: admin.publicKey,
+  //       userReceiving: bob.publicKey,
+  //       mintOfTokenBeingSent: mintAddress,
+  //       walletToWithdrawFrom: adminWallet,
+
+  //       systemProgram: anchor.web3.SystemProgram.programId,
+  //       // rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+  //       tokenProgram: spl.TOKEN_PROGRAM_ID,
+  //     })
+  //     .signers([admin])
+  //     .rpc();
+
+  //   console.log(
+  //     `Initialized a new Safe Pay instance. admin will pay bob 20 tokens`
+  //   );
+
+  //   console.log("Initialize New Grant transaction signature", tx);
+
+  //   // Assert that 20 tokens were moved from admin's account to the escrow.
+  //   const [, adminBalancePost] = await readAccount(adminWallet, provider);
+  //   assert.equal(adminBalancePost, "1317000000");
+  //   const [, escrowBalancePost] = await readAccount(
+  //     pda.escrowWalletKey,
+  //     provider
+  //   );
+  //   assert.equal(escrowBalancePost, "20000000");
+
+  //   // //trying to send funds in the different account that is not owned by admin
+  //   // let maliciousWallet: anchor.web3.PublicKey;
+  //   // [, maliciousWallet] = await createUserAndAssociatedWallet(
+  //   //   provider.connection,
+  //   //   mintAddress
+  //   // );
+
+  //   // Withdraw the funds back
+  //   const tx2 = await program.methods
+  //     .pullBack(pda.idx)
+  //     .accounts({
+  //       applicationState: pda.stateKey,
+  //       escrowWalletState: pda.escrowWalletKey,
+  //       refundWallet: adminWallet,
+  //       userSending: admin.publicKey,
+  //       userReceiving: bob.publicKey,
+  //       mintOfTokenBeingSent: mintAddress,
+
+  //       systemProgram: anchor.web3.SystemProgram.programId,
+  //       tokenProgram: spl.TOKEN_PROGRAM_ID,
+  //       // rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+  //     })
+  //     .signers([bob])
+  //     .rpc();
+
+  //   console.log("Pull Back transaction signature", tx2);
+
+  //   // Assert that 20 tokens were sent back.
+  //   const [, adminBalanceRefund] = await readAccount(adminWallet, provider);
+  //   assert.equal(adminBalanceRefund, "1337000000");
+  //   // // Assert that escrow was correctly closed.
+  //   try {
+  //     const [info, balance] = await readAccount(pda.escrowWalletKey, provider);
+  //     console.log("===========>", info, balance);
+  //     return assert.fail("Account should be closed");
+  //   } catch (e) {
+  //     assert.equal(
+  //       e.message,
+  //       "Cannot read properties of null (reading 'data')"
+  //     );
+  //   }
+  // });
 });

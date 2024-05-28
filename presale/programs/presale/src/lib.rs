@@ -63,7 +63,7 @@ pub struct InitializePresale<'info> {
         payer = admin,
         seeds=[b"usdc_vault".as_ref()],
         bump,
-        token::mint = mint_of_token_user_send,
+        token::mint = mint_of_token_user_send,   //usdc token
         token::authority = presale_info,
     )]
     usdc_vault: Account<'info, TokenAccount>,
@@ -73,7 +73,7 @@ pub struct InitializePresale<'info> {
         payer = admin,
         seeds=[b"token_vault".as_ref()],
         bump,
-        token::mint = mint_of_token_program_sent,
+        token::mint = mint_of_token_program_sent,  //dl token
         token::authority = presale_info,
     )]
     token_vault: Account<'info, TokenAccount>,
