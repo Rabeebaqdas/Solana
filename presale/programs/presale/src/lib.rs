@@ -69,10 +69,10 @@ fn close_vault<'info>(
         vault.reload()?;
         vault.amount == 0
     };
-    msg!(
-        "Admin Balance Before {}",
-        admin.to_account_info().lamports()
-    );
+    // msg!(
+    //     "Admin Balance Before {}",
+    //     admin.to_account_info().lamports()
+    // );
     if should_close {
         let ca = CloseAccount {
             account: vault.to_account_info(),
@@ -84,7 +84,7 @@ fn close_vault<'info>(
 
         close_account(cpi_ctx)?;
 
-        msg!("Admin Balance After {}", admin.to_account_info().lamports());
+        // msg!("Admin Balance After {}", admin.to_account_info().lamports());
     }
     Ok(())
 }
