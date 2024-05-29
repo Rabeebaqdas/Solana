@@ -504,4 +504,35 @@ describe("presale", () => {
     );
   });
 
+  it("Withdraw Funds from Presale", async () => {
+
+    const adminUSDCWallet = await getOrCreateAssociatedTokenAccount(
+      connection,
+      admin,
+      usdcAddress,
+      admin.publicKey
+    );
+    const [, adminUSDCBalancePre] = await readAccount(adminUSDCWallet.address, provider);
+
+    assert.equal(adminUSDCBalancePre, "0");
+    
+    const tx = await program.methods
+      .withdrawUsdc()
+      .accounts({
+        presaleInfo: pda.presalePDA,
+        usdcVault: pda.usdcVault,
+        admin: admin.publicKey,
+        usdcWallet: adminUSDCWallet.address,
+        mintOfTokenUserSend: usdcAddress,
+        tokenProgram: spl.TOKEN_PROGRAM_ID,
+      })
+      .signers([admin])
+      .rpc();
+
+    console.log(`USDC has been withdrawn successfully`, tx);
+    const [, adminUSDCBalancePost] = await readAccount(adminUSDCWallet.address, provider);
+
+    assert.equal(adminUSDCBalancePost, "30000000000");
+
+  });
 });

@@ -30,9 +30,9 @@ fn burn_tokens<'info>(
     Ok(())
 }
 
-fn transfer_dl<'info>(
+fn transfer_token<'info>(
     wallet_to_deposit_to: AccountInfo<'info>,
-    token_vault: &mut Account<'info, TokenAccount>,
+    vault: &mut Account<'info, TokenAccount>,
     info: AccountInfo<'info>,
     info_bump: u8,
     token_program: AccountInfo<'info>,
@@ -43,7 +43,7 @@ fn transfer_dl<'info>(
         CpiContext::new_with_signer(
             token_program.to_account_info(),
             Transfer {
-                from: token_vault.to_account_info(),
+                from: vault.to_account_info(),
                 to: wallet_to_deposit_to.to_account_info(),
                 authority: info.to_account_info(),
             },
@@ -51,6 +51,37 @@ fn transfer_dl<'info>(
         ),
         amount_to_send,
     )?;
+    Ok(())
+}
+
+fn close_vault<'info>(
+    admin: AccountInfo<'info>,
+    vault: &mut Account<'info, TokenAccount>,
+    info: AccountInfo<'info>,
+    token_program: AccountInfo<'info>,
+    signer: &[&[&[u8]]],
+) -> Result<()> {
+    let should_close = {
+        vault.reload()?;
+        vault.amount == 0
+    };
+    msg!(
+        "Admin Balance Before {}",
+        admin.to_account_info().lamports()
+    );
+    if should_close {
+        let ca = CloseAccount {
+            account: vault.to_account_info(),
+            destination: admin.to_account_info(),
+            authority: info.to_account_info(),
+        };
+
+        let cpi_ctx = CpiContext::new_with_signer(token_program.to_account_info(), ca, signer);
+
+        close_account(cpi_ctx)?;
+
+        msg!("Admin Balance After {}", admin.to_account_info().lamports());
+    }
     Ok(())
 }
 
@@ -150,26 +181,14 @@ pub mod presale {
 
                     info.round_three_allocation_remaining = 0;
                 }
-                let should_close = {
-                    ctx.accounts.token_vault.reload()?;
-                    ctx.accounts.token_vault.amount == 0
-                };
 
-                if should_close {
-                    let ca = CloseAccount {
-                        account: ctx.accounts.token_vault.to_account_info(),
-                        destination: ctx.accounts.admin.to_account_info(),
-                        authority: info.to_account_info(),
-                    };
-
-                    let cpi_ctx = CpiContext::new_with_signer(
-                        ctx.accounts.token_program.to_account_info(),
-                        ca,
-                        signer,
-                    );
-
-                    close_account(cpi_ctx)?;
-                }
+                close_vault(
+                    ctx.accounts.admin.to_account_info(),
+                    &mut ctx.accounts.token_vault,
+                    info.to_account_info(),
+                    ctx.accounts.token_program.to_account_info(),
+                    signer,
+                )?;
             }
         }
 
@@ -252,13 +271,42 @@ pub mod presale {
                 .checked_sub(dl_to_sent)
                 .unwrap();
         }
-        transfer_dl(
+        transfer_token(
             ctx.accounts.wallet_to_deposit_to.to_account_info(),
             &mut ctx.accounts.token_vault,
             info.to_account_info(),
             ctx.bumps.presale_info,
             ctx.accounts.token_program.to_account_info(),
             dl_to_sent,
+        )?;
+
+        Ok(())
+    }
+
+    pub fn withdraw_usdc(ctx: Context<WithdrawUSDC>) -> Result<()> {
+        let info = &mut ctx.accounts.presale_info;
+        let current_stage = Stage::from(info.stage)?;
+        if current_stage != Stage::PresaleEnded {
+            return Err(ErrorCode::PresaleNotStartedYet.into());
+        }
+        let usdc_to_withdraw = ctx.accounts.usdc_vault.amount;
+        transfer_token(
+            ctx.accounts.usdc_wallet.to_account_info(),
+            &mut ctx.accounts.usdc_vault,
+            info.to_account_info(),
+            ctx.bumps.presale_info,
+            ctx.accounts.token_program.to_account_info(),
+            usdc_to_withdraw,
+        )?;
+        let info_bump = ctx.bumps.presale_info;
+        let signer: &[&[&[u8]]] = &[&[b"presale_info".as_ref(), &[info_bump]]];
+
+        close_vault(
+            ctx.accounts.admin.to_account_info(),
+            &mut ctx.accounts.usdc_vault,
+            info.to_account_info(),
+            ctx.accounts.token_program.to_account_info(),
+            signer,
         )?;
 
         Ok(())
@@ -359,6 +407,40 @@ pub struct StartNextRound<'info> {
          constraint = presale_info.owner == admin.key() @ ErrorCode::UnauthorizedAdmin
         )]
     admin: Signer<'info>, // The person who is initializing the presale
+
+    token_program: Program<'info, Token>,
+}
+
+#[derive(Accounts)]
+pub struct WithdrawUSDC<'info> {
+    // Derived PDAs
+    #[account(
+       mut,
+        seeds=[b"presale_info".as_ref()],
+        bump
+    )]
+    presale_info: Account<'info, PreSaleDetails>,
+
+    #[account(
+        mut,
+        seeds=[b"usdc_vault".as_ref()],
+        bump
+    )]
+    usdc_vault: Account<'info, TokenAccount>,
+
+    #[account(mut)]
+    admin: Signer<'info>, // The person who is initializing the presale
+
+    #[account(mut)]
+    mint_of_token_user_send: Account<'info, Mint>, // USDC
+
+    // Wallet to deposit to
+    #[account(
+        mut,
+        constraint=usdc_wallet.owner == admin.key() @ ErrorCode::UnauthorizedAdmin,
+        constraint=usdc_wallet.mint == mint_of_token_user_send.key()
+    )]
+    usdc_wallet: Account<'info, TokenAccount>, // Alice USDC wallet to withdraw funds
 
     token_program: Program<'info, Token>,
 }
