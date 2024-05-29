@@ -273,16 +273,6 @@ pub enum Stage {
     PresaleEnded,
 }
 impl Stage {
-    // fn to_code(&self) -> u8 {
-    //     match self {
-    //         Stage::PresaleNotStartedYet => 0,
-    //         Stage::RoundOne => 1,
-    //         Stage::RoundTwo => 2,
-    //         Stage::RoundThird => 3,
-    //         Stage::PresaleEnded => 4,
-    //     }
-    // }
-
     fn from(val: u8) -> Result<Stage> {
         match val {
             0 => Ok(Stage::PresaleNotStartedYet),
