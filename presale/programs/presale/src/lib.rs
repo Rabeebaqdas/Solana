@@ -32,6 +32,8 @@ fn burn_tokens<'info>(
 
 #[program]
 pub mod presale {
+    use solana_program::native_token::LAMPORTS_PER_SOL;
+
     use super::*;
 
     pub fn initialize(
@@ -176,7 +178,9 @@ pub mod presale {
         )?;
 
         if current_stage == Stage::RoundOne {
-            let final_amount = info.round_one_price.checked_mul(usdc_token).unwrap();
+            let final_amount = (info.round_one_price.checked_mul(usdc_token).unwrap())
+                .checked_div(LAMPORTS_PER_SOL)
+                .unwrap();
             if final_amount > info.round_one_allocation_remaining {
                 return Err(ErrorCode::InsufficientAllocation.into());
             }
