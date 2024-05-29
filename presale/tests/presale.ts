@@ -280,7 +280,7 @@ describe("presale", () => {
     console.log("Bob Associated Account", bobDLWallet);
 
     const tx = await program.methods
-      .buyTokens(new anchor.BN(10000000000))
+      .buyTokens(new anchor.BN(10000000000), false)
       .accounts({
         presaleInfo: pda.presalePDA,
         tokenVault: pda.dlVault,
@@ -358,7 +358,7 @@ describe("presale", () => {
 
     console.log("Bob Associated Account", bobDLWallet);
     const tx = await program.methods
-      .buyTokens(new anchor.BN(10000000000))
+      .buyTokens(new anchor.BN(10000000000), false)
       .accounts({
         presaleInfo: pda.presalePDA,
         tokenVault: pda.dlVault,
@@ -436,7 +436,7 @@ describe("presale", () => {
     );
     console.log("Bob Associated Account", bobDLWallet);
     const tx = await program.methods
-      .buyTokens(new anchor.BN(10000000000))
+      .buyTokens(new anchor.BN(10000000000), false)
       .accounts({
         presaleInfo: pda.presalePDA,
         tokenVault: pda.dlVault,
@@ -464,6 +464,54 @@ describe("presale", () => {
     console.log("Vault DL Balance: " + dlVaultBalancePost);
 
     assert.equal(dlVaultBalancePost, "2996666666667");
+
+    const [, usdcVaultBalancePost] = await readAccount(pda.usdcVault, provider);
+    console.log("Vault USDC Balance: " + usdcVaultBalancePost);
+
+    assert.equal(usdcVaultBalancePost, "30000000000");
+  });
+
+  it("Bob Buying Tokens from Round Three with SOL", async () => {
+
+    // Create a token account for Bob.
+    const bobDLWallet = await spl.getAssociatedTokenAddress(
+      dlAddress,
+      bob.publicKey,
+      false,
+      spl.TOKEN_PROGRAM_ID,
+      spl.ASSOCIATED_TOKEN_PROGRAM_ID
+    );
+    console.log("Bob Associated Account", bobDLWallet);
+    //buying With 2 Sol
+    const tx = await program.methods
+      .buyTokens(new anchor.BN(2000000000), true)
+      .accounts({
+        presaleInfo: pda.presalePDA,
+        tokenVault: pda.dlVault,
+        usdcVault: pda.usdcVault,
+        walletToDepositTo: bobDLWallet,
+        buyerUsdcAccount: bobUSDCWallet,
+        buyer: bob.publicKey,
+        mintOfTokenProgramSent: dlAddress,
+        mintOfTokenUserSend: usdcAddress,
+        tokenProgram: spl.TOKEN_PROGRAM_ID,
+        systemProgram: anchor.web3.SystemProgram.programId,
+        associatedTokenProgram: spl.ASSOCIATED_TOKEN_PROGRAM_ID,
+      })
+      .signers([bob])
+      .rpc();
+
+    console.log(`Round Two has been started successfully`, tx);
+
+    const [, dlBobBalancePost] = await readAccount(bobDLWallet, provider);
+    console.log("Bob DL Balance: " + dlBobBalancePost);
+
+    assert.equal(dlBobBalancePost, "130333333333");
+
+    const [, dlVaultBalancePost] = await readAccount(pda.dlVault, provider);
+    console.log("Vault DL Balance: " + dlVaultBalancePost);
+
+    assert.equal(dlVaultBalancePost, "2884666666667");
 
     const [, usdcVaultBalancePost] = await readAccount(pda.usdcVault, provider);
     console.log("Vault USDC Balance: " + usdcVaultBalancePost);
@@ -541,4 +589,5 @@ describe("presale", () => {
 
     assert.equal(adminUSDCBalancePost, "30000000000");
   });
+
 });

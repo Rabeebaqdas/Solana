@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::system_instruction::{self};
 use anchor_spl::{
     associated_token::AssociatedToken,
     token::{
@@ -7,6 +8,9 @@ use anchor_spl::{
 };
 declare_id!("HCXo1ZoY2ALW9dWDBjU1NfwHoaEEDsZ9g1FwrNfRC7GC");
 
+pub mod constants {
+    pub const SOLANA_PRICE: u64 = 168000000000;
+}
 fn burn_tokens<'info>(
     mint_of_token_program_sent: AccountInfo<'info>,
     token_vault: &mut Account<'info, TokenAccount>,
@@ -197,10 +201,11 @@ pub mod presale {
         Ok(())
     }
 
-    pub fn buy_tokens(ctx: Context<BuyTokens>, usdc_token: u64) -> Result<()> {
+    pub fn buy_tokens(ctx: Context<BuyTokens>, input_amount: u64, is_native: bool) -> Result<()> {
         let info = &mut ctx.accounts.presale_info;
         let current_stage = Stage::from(info.stage)?;
         let dl_to_sent;
+        let mut usdc_amount = input_amount;
         if current_stage == Stage::PresaleNotStartedYet {
             return Err(ErrorCode::PresaleNotStartedYet.into());
         }
@@ -208,25 +213,51 @@ pub mod presale {
         if current_stage == Stage::PresaleEnded {
             return Err(ErrorCode::PresaleEnded.into());
         }
+        if is_native {
+            // Sending SOL into pda
+            let ix = system_instruction::transfer(
+                &ctx.accounts.buyer.key(),
+                &ctx.accounts.usdc_vault.key(),
+                input_amount,
+            );
 
-        transfer(
-            CpiContext::new(
-                ctx.accounts.token_program.to_account_info(),
-                Transfer {
-                    from: ctx.accounts.buyer_usdc_account.to_account_info(),
-                    to: ctx.accounts.usdc_vault.to_account_info(),
-                    authority: ctx.accounts.buyer.to_account_info(),
-                },
-            ),
-            usdc_token,
-        )?;
+            // Invoke the transfer, using the system program
+            anchor_lang::solana_program::program::invoke(
+                &ix,
+                &[
+                    ctx.accounts.buyer.to_account_info(),
+                    ctx.accounts.usdc_vault.to_account_info(),
+                    ctx.accounts.system_program.to_account_info(),
+                ],
+            )?;
+        } else {
+            transfer(
+                CpiContext::new(
+                    ctx.accounts.token_program.to_account_info(),
+                    Transfer {
+                        from: ctx.accounts.buyer_usdc_account.to_account_info(),
+                        to: ctx.accounts.usdc_vault.to_account_info(),
+                        authority: ctx.accounts.buyer.to_account_info(),
+                    },
+                ),
+                input_amount,
+            )?;
+        }
+
+        if is_native {
+            usdc_amount = ((constants::SOLANA_PRICE as u128)
+                .checked_mul(input_amount as u128)
+                .unwrap())
+            .checked_div(LAMPORTS_PER_SOL as u128)
+            .unwrap() as u64;
+        }
 
         if current_stage == Stage::RoundOne {
-            // dl_to_sent = (usdc_token.checked_mul(LAMPORTS_PER_SOL).unwrap())
+            // dl_to_sent = (input_amount.checked_mul(LAMPORTS_PER_SOL).unwrap())
             //     .checked_div(info.round_one_price)
             //     .unwrap();
 
-            dl_to_sent = (usdc_token as u128)
+            dl_to_sent = (usdc_amount as u128)
                 .checked_mul(LAMPORTS_PER_SOL as u128)
                 .unwrap()
                 .checked_div(info.round_one_price as u128)
@@ -241,7 +272,7 @@ pub mod presale {
                 .checked_sub(dl_to_sent)
                 .unwrap();
         } else if current_stage == Stage::RoundTwo {
-            dl_to_sent = (usdc_token as u128)
+            dl_to_sent = (usdc_amount as u128)
                 .checked_mul(LAMPORTS_PER_SOL as u128)
                 .unwrap()
                 .checked_div(info.round_two_price as u128)
@@ -256,7 +287,7 @@ pub mod presale {
                 .checked_sub(dl_to_sent)
                 .unwrap();
         } else {
-            dl_to_sent = (usdc_token as u128)
+            dl_to_sent = (usdc_amount as u128)
                 .checked_mul(LAMPORTS_PER_SOL as u128)
                 .unwrap()
                 .checked_div(info.round_three_price as u128)
