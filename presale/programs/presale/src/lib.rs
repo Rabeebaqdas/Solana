@@ -30,6 +30,30 @@ fn burn_tokens<'info>(
     Ok(())
 }
 
+fn transfer_dl<'info>(
+    wallet_to_deposit_to: AccountInfo<'info>,
+    token_vault: &mut Account<'info, TokenAccount>,
+    info: AccountInfo<'info>,
+    info_bump: u8,
+    token_program: AccountInfo<'info>,
+    amount_to_send: u64,
+) -> Result<()> {
+    let signer: &[&[&[u8]]] = &[&[b"presale_info".as_ref(), &[info_bump]]];
+    transfer(
+        CpiContext::new_with_signer(
+            token_program.to_account_info(),
+            Transfer {
+                from: token_vault.to_account_info(),
+                to: wallet_to_deposit_to.to_account_info(),
+                authority: info.to_account_info(),
+            },
+            signer,
+        ),
+        amount_to_send,
+    )?;
+    Ok(())
+}
+
 #[program]
 pub mod presale {
     use solana_program::native_token::LAMPORTS_PER_SOL;
@@ -153,10 +177,11 @@ pub mod presale {
 
         Ok(())
     }
+
     pub fn buy_tokens(ctx: Context<BuyTokens>, usdc_token: u64) -> Result<()> {
         let info = &mut ctx.accounts.presale_info;
         let current_stage = Stage::from(info.stage)?;
-
+        let dl_to_sent;
         if current_stage == Stage::PresaleNotStartedYet {
             return Err(ErrorCode::PresaleNotStartedYet.into());
         }
@@ -178,35 +203,63 @@ pub mod presale {
         )?;
 
         if current_stage == Stage::RoundOne {
-            let final_amount = (info.round_one_price.checked_mul(usdc_token).unwrap())
-                .checked_div(LAMPORTS_PER_SOL)
-                .unwrap();
-            if final_amount > info.round_one_allocation_remaining {
+            // dl_to_sent = (usdc_token.checked_mul(LAMPORTS_PER_SOL).unwrap())
+            //     .checked_div(info.round_one_price)
+            //     .unwrap();
+
+            dl_to_sent = (usdc_token as u128)
+                .checked_mul(LAMPORTS_PER_SOL as u128)
+                .unwrap()
+                .checked_div(info.round_one_price as u128)
+                .unwrap() as u64;
+
+            if dl_to_sent > info.round_one_allocation_remaining {
                 return Err(ErrorCode::InsufficientAllocation.into());
             }
-            let info_bump = ctx.bumps.presale_info;
-
-            let signer: &[&[&[u8]]] = &[&[b"presale_info".as_ref(), &[info_bump]]];
-            transfer(
-                CpiContext::new_with_signer(
-                    ctx.accounts.token_program.to_account_info(),
-                    Transfer {
-                        from: ctx.accounts.token_vault.to_account_info(),
-                        to: ctx.accounts.wallet_to_deposit_to.to_account_info(),
-                        authority: info.to_account_info(),
-                    },
-                    signer,
-                ),
-                final_amount,
-            )?;
 
             info.round_one_allocation_remaining = info
                 .round_one_allocation_remaining
-                .checked_sub(final_amount)
+                .checked_sub(dl_to_sent)
                 .unwrap();
         } else if current_stage == Stage::RoundTwo {
+            dl_to_sent = (usdc_token as u128)
+                .checked_mul(LAMPORTS_PER_SOL as u128)
+                .unwrap()
+                .checked_div(info.round_two_price as u128)
+                .unwrap() as u64;
+
+            if dl_to_sent > info.round_two_allocation_remaining {
+                return Err(ErrorCode::InsufficientAllocation.into());
+            }
+
+            info.round_two_allocation_remaining = info
+                .round_two_allocation_remaining
+                .checked_sub(dl_to_sent)
+                .unwrap();
         } else {
+            dl_to_sent = (usdc_token as u128)
+                .checked_mul(LAMPORTS_PER_SOL as u128)
+                .unwrap()
+                .checked_div(info.round_three_price as u128)
+                .unwrap() as u64;
+
+            if dl_to_sent > info.round_three_allocation_remaining {
+                return Err(ErrorCode::InsufficientAllocation.into());
+            }
+
+            info.round_three_allocation_remaining = info
+                .round_three_allocation_remaining
+                .checked_sub(dl_to_sent)
+                .unwrap();
         }
+        transfer_dl(
+            ctx.accounts.wallet_to_deposit_to.to_account_info(),
+            &mut ctx.accounts.token_vault,
+            info.to_account_info(),
+            ctx.bumps.presale_info,
+            ctx.accounts.token_program.to_account_info(),
+            dl_to_sent,
+        )?;
 
         Ok(())
     }
