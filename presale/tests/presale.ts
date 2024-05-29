@@ -355,6 +355,7 @@ describe("presale", () => {
       spl.TOKEN_PROGRAM_ID,
       spl.ASSOCIATED_TOKEN_PROGRAM_ID
     );
+
     console.log("Bob Associated Account", bobDLWallet);
     const tx = await program.methods
       .buyTokens(new anchor.BN(10000000000))
@@ -505,17 +506,20 @@ describe("presale", () => {
   });
 
   it("Withdraw Funds from Presale", async () => {
-
     const adminUSDCWallet = await getOrCreateAssociatedTokenAccount(
       connection,
       admin,
       usdcAddress,
       admin.publicKey
     );
-    const [, adminUSDCBalancePre] = await readAccount(adminUSDCWallet.address, provider);
+
+    const [, adminUSDCBalancePre] = await readAccount(
+      adminUSDCWallet.address,
+      provider
+    );
 
     assert.equal(adminUSDCBalancePre, "0");
-    
+
     const tx = await program.methods
       .withdrawUsdc()
       .accounts({
@@ -530,9 +534,11 @@ describe("presale", () => {
       .rpc();
 
     console.log(`USDC has been withdrawn successfully`, tx);
-    const [, adminUSDCBalancePost] = await readAccount(adminUSDCWallet.address, provider);
+    const [, adminUSDCBalancePost] = await readAccount(
+      adminUSDCWallet.address,
+      provider
+    );
 
     assert.equal(adminUSDCBalancePost, "30000000000");
-
   });
 });
