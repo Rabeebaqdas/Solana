@@ -1,0 +1,20 @@
+{
+  "name": "Decrypted Labs",
+  "description": "Decrypted Labs is the full-cycle software and mobile app development company with a world-class team of innovators.",
+  "image": "https://emerald-remarkable-otter-771.mypinata.cloud/ipfs/QmY7edZn873NkJvM2rtGeyNH8VUpDmpDThBmWmPPK4pAJs",
+  "animation_url": "https://emerald-remarkable-otter-771.mypinata.cloud/ipfs/QmYWeHCpZ5C7XmwTfekBBBLzf2KyAVAEMxwe9upzSBoHmX",
+  "external_url": "https://emerald-remarkable-otter-771.mypinata.cloud/ipfs/QmYWeHCpZ5C7XmwTfekBBBLzf2KyAVAEMxwe9upzSBoHmX",
+  "attributes": [
+    { "trait_type": "Ethereum", "value": "80" },
+    { "trait_type": "Solana", "value": "60" },
+    { "trait_type": "Mern", "value": "100" }
+  ],
+  "properties": {
+    "files": [
+      {
+        "type": "image/jpeg",
+        "uri": "https://emerald-remarkable-otter-771.mypinata.cloud/ipfs/QmY7edZn873NkJvM2rtGeyNH8VUpDmpDThBmWmPPK4pAJs"
+      }
+    ]
+  }
+}
