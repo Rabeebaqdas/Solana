@@ -19,7 +19,7 @@ const userWalletSigner = createSignerFromKeypair(umi, userWallet);
 const futiraAddress: any = new PublicKey(
   "4CFY1n2ECQhybmfzqbbjJkVshvSu1fUN8z2CmrmFE1Gt"
 );
-const amount_to_mint = 1;
+const amount_to_mint = 100_000000000;
 umi.use(signerIdentity(userWalletSigner));
 umi.use(mplTokenMetadata());
 
