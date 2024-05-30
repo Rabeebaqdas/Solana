@@ -9,7 +9,6 @@ import {
   generateSigner,
   keypairIdentity,
   percentAmount,
-  sol,
 } from "@metaplex-foundation/umi";
 import { mockStorage } from "@metaplex-foundation/umi-storage-mock";
 import * as fs from "fs";
@@ -98,6 +97,8 @@ async function createAndMintNFT() {
   //These two functions are just for making mock metadata of the nft. Best for testing environment.
   // const imageUri = await uploadImage();
   // const metadataUri = await uploadMetadata(imageUri);
+
+  //You can only mint 1 nft  (NFT Devnet Address: GCUAVbrBXdkxW2focfWnxakUTLtwTt7hsX3v9HGJRGKu)
   await mintNft(metadataUri);
 }
 
