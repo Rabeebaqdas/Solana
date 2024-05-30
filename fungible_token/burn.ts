@@ -1,59 +1,50 @@
 import {
-  percentAmount,
-  generateSigner,
   signerIdentity,
   createSignerFromKeypair,
 } from "@metaplex-foundation/umi";
 import {
   TokenStandard,
-  createAndMint,
+  burnV1,
   mplTokenMetadata,
 } from "@metaplex-foundation/mpl-token-metadata";
 import { createUmi } from "@metaplex-foundation/umi-bundle-defaults";
 import secret from "./guideSecret.json";
+import { LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
 
 const umi = createUmi("https://api.devnet.solana.com");
 
 const userWallet = umi.eddsa.createKeypairFromSecretKey(new Uint8Array(secret));
 const userWalletSigner = createSignerFromKeypair(umi, userWallet);
 
-const metadata = {
-  name: "Futira",
-  symbol: "FUT",
-  uri: "https://emerald-remarkable-otter-771.mypinata.cloud/ipfs/QmcKB5dV4KXfUFzzPYDp8dJQGZEDpDhQsKXcfdnL9gCQvp",
-};
-
-// Generate a new mint address
-const mint = generateSigner(umi);
-
+const futiraAddress: any = new PublicKey(
+  "4CFY1n2ECQhybmfzqbbjJkVshvSu1fUN8z2CmrmFE1Gt"
+);
+const amount_to_mint = 100_000000001;
 umi.use(signerIdentity(userWalletSigner));
 umi.use(mplTokenMetadata());
 
-async function createAndMintTokens() {
+async function burnTokens() {
   try {
-    const tx = await createAndMint(umi, {
-      mint,
+    const tx = await burnV1(umi, {
+      mint: futiraAddress,
       authority: umi.identity,
-      name: metadata.name,
-      symbol: metadata.symbol,
-      uri: metadata.uri,
-      sellerFeeBasisPoints: percentAmount(0),
-      decimals: 9,
-      amount: Number("1000000000000000000"), // 1 billion tokens considering 9 decimals
+      amount: amount_to_mint,
       tokenOwner: userWallet.publicKey,
       tokenStandard: TokenStandard.Fungible,
     }).sendAndConfirm(umi);
 
     console.log(`Transaction successfull: ${tx}`);
 
-    console.log("Successfully minted 1 billion tokens (", mint.publicKey, ")");
+    console.log(
+      `Successfully burned ${amount_to_mint / LAMPORTS_PER_SOL} tokens`
+    );
   } catch (err) {
-    console.error("Error minting tokens:", err);
+    console.error("Error burning tokens:", err);
     process.exit(1);
   }
 }
 
-createAndMintTokens()
+burnTokens()
   .then(() => process.exit(0))
   .catch((error) => {
     console.error(error);
