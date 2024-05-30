@@ -1,0 +1,14 @@
+{
+  "name": "fungible_token",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "@metaplex-foundation/mpl-token-metadata": "^3.2.1",
+    "@metaplex-foundation/umi": "^0.9.1",
+    "@metaplex-foundation/umi-bundle-defaults": "^0.9.1",
+    "@solana/web3.js": "^1.91.8",
+    "bs58": "^5.0.0",
+    "typescript": "^5.4.5"
+  }
+}
