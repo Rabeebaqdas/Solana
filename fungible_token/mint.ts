@@ -26,15 +26,13 @@ umi.use(mplTokenMetadata());
 
 async function mintTokens() {
   try {
-    const tx = await mintV1(umi, {
+    await mintV1(umi, {
       mint: futiraAddress,
       authority: umi.identity,
       amount: amount_to_mint,
       tokenOwner: userWallet.publicKey,
       tokenStandard: TokenStandard.Fungible,
     }).sendAndConfirm(umi);
-
-    console.log(`Transaction successfull: ${tx}`);
 
     console.log(
       `Successfully minted ${amount_to_mint / LAMPORTS_PER_SOL} tokens`

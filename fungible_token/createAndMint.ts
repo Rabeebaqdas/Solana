@@ -31,7 +31,7 @@ umi.use(mplTokenMetadata());
 
 async function createAndMintTokens() {
   try {
-    const tx = await createAndMint(umi, {
+    await createAndMint(umi, {
       mint,
       authority: umi.identity,
       name: metadata.name,
@@ -43,8 +43,6 @@ async function createAndMintTokens() {
       tokenOwner: userWallet.publicKey,
       tokenStandard: TokenStandard.Fungible,
     }).sendAndConfirm(umi);
-
-    console.log(`Transaction successfull: ${tx}`);
 
     console.log("Successfully minted 1 billion tokens (", mint.publicKey, ")");
   } catch (err) {

@@ -19,21 +19,19 @@ const userWalletSigner = createSignerFromKeypair(umi, userWallet);
 const futiraAddress: any = new PublicKey(
   "4CFY1n2ECQhybmfzqbbjJkVshvSu1fUN8z2CmrmFE1Gt"
 );
-const amount_to_mint = 100_000000001;
+const amount_to_mint = 1;
 umi.use(signerIdentity(userWalletSigner));
 umi.use(mplTokenMetadata());
 
 async function burnTokens() {
   try {
-    const tx = await burnV1(umi, {
+    await burnV1(umi, {
       mint: futiraAddress,
       authority: umi.identity,
       amount: amount_to_mint,
       tokenOwner: userWallet.publicKey,
       tokenStandard: TokenStandard.Fungible,
     }).sendAndConfirm(umi);
-
-    console.log(`Transaction successfull: ${tx}`);
 
     console.log(
       `Successfully burned ${amount_to_mint / LAMPORTS_PER_SOL} tokens`
