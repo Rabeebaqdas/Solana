@@ -40,8 +40,8 @@ export default function InitializedButton() {
     roundOnePrice: new BN(1 * web3.LAMPORTS_PER_SOL),
     roundTwoPrice: new BN(2 * web3.LAMPORTS_PER_SOL),
     roundThreePrice: new BN(3 * web3.LAMPORTS_PER_SOL),
-    usdcAddress: new PublicKey("DwvyvgXtxsug14oTKiRawTbuirQjkfUUbZBsbqG1PntG"),
-    dlAddress: new PublicKey("4nKi4k91QGkbetCA4FuRVB9PxBZpJaNSnGCKstdSfGoP"),
+    usdcAddress: new PublicKey("DwvyvgXtxsug14oTKiRawTbuirQjkfUUbZBsbqG1PntG"), //Associated Token Account for Admin: HneV6nzRsxL6LwMkExEAnBJxVDqs7sV6MGDDezmaB18T
+    dlAddress: new PublicKey("4nKi4k91QGkbetCA4FuRVB9PxBZpJaNSnGCKstdSfGoP"), //Associated Token Account for Admin: 2EbGhPtn7T432C7SsmTHbVk4qC1P6T5fPHdXU2PbUger
   });
 
   // const getProvider = () => {
@@ -100,57 +100,57 @@ export default function InitializedButton() {
   //   }
   // };
 
-  //creating USDC associated account for our wallet
-  const createUserAndAssociatedWallet = async (
-    mint?: web3.PublicKey
-  ): Promise<[web3.PublicKey | undefined]> => {
-    console.log(
-      "----------------------------------------------------------------"
-    );
+  //creating USDC and DL associated account for our wallet
+  // const createUserAndAssociatedWallet = async (
+  //   mint?: web3.PublicKey
+  // ): Promise<[web3.PublicKey | undefined]> => {
+  //   console.log(
+  //     "----------------------------------------------------------------"
+  //   );
 
-    const payer = Keypair.fromSecretKey(
-      new Uint8Array([
-        82, 41, 172, 138, 53, 118, 134, 8, 140, 80, 64, 128, 107, 4, 200, 93,
-        230, 226, 1, 56, 57, 124, 67, 220, 141, 31, 230, 129, 115, 41, 178, 212,
-        155, 103, 213, 205, 144, 42, 89, 127, 85, 105, 223, 89, 213, 175, 213,
-        238, 109, 176, 118, 29, 145, 226, 61, 215, 17, 24, 222, 253, 168, 108,
-        22, 114,
-      ])
-    );
-    let userAssociatedTokenAccount = undefined;
-    // Fund user with some SOL
+  //   const payer = Keypair.fromSecretKey(
+  //     new Uint8Array([
+  //       82, 41, 172, 138, 53, 118, 134, 8, 140, 80, 64, 128, 107, 4, 200, 93,
+  //       230, 226, 1, 56, 57, 124, 67, 220, 141, 31, 230, 129, 115, 41, 178, 212,
+  //       155, 103, 213, 205, 144, 42, 89, 127, 85, 105, 223, 89, 213, 175, 213,
+  //       238, 109, 176, 118, 29, 145, 226, 61, 215, 17, 24, 222, 253, 168, 108,
+  //       22, 114,
+  //     ])
+  //   );
+  //   let userAssociatedTokenAccount = undefined;
+  //   // Fund user with some SOL
 
-    if (mint) {
-      //making associated token account to hold the user's tokens
-      userAssociatedTokenAccount = await getOrCreateAssociatedTokenAccount(
-        connection,
-        payer,
-        mint,
-        publicKey as PublicKey
-      );
+  //   if (mint) {
+  //     //making associated token account to hold the user's tokens
+  //     userAssociatedTokenAccount = await getOrCreateAssociatedTokenAccount(
+  //       connection,
+  //       payer,
+  //       mint,
+  //       publicKey as PublicKey
+  //     );
 
-      await mintTo(
-        connection,
-        payer,
-        mint,
-        userAssociatedTokenAccount.address,
-        payer.publicKey,
-        new BN(100000 * web3.LAMPORTS_PER_SOL)
-      );
-      console.log(
-        `[${
-          userAssociatedTokenAccount.address
-        }] New associated account for mint ${mint.toBase58()}`
-      );
-    }
-    console.log(
-      "----------------------------------------------------------------"
-    );
+  //     await mintTo(
+  //       connection,
+  //       payer,
+  //       mint,
+  //       userAssociatedTokenAccount.address,
+  //       payer.publicKey,
+  //       new BN(100000 * web3.LAMPORTS_PER_SOL)
+  //     );
+  //     console.log(
+  //       `[${
+  //         userAssociatedTokenAccount.address
+  //       }] New associated account for mint ${mint.toBase58()}`
+  //     );
+  //   }
+  //   console.log(
+  //     "----------------------------------------------------------------"
+  //   );
 
-    return [userAssociatedTokenAccount?.address];
-  };
+  //   return [userAssociatedTokenAccount?.address];
+  // };
 
-  // const InitializeProgram = async () => {
+  // const initializeProgram = async () => {
   //   if (!publicKey) return;
 
   //   setIsLoading(true);
@@ -199,7 +199,7 @@ export default function InitializedButton() {
   return (
     <button
       className="w-24"
-      onClick={() => createUserAndAssociatedWallet(inputVal.usdcAddress)}
+      onClick={() => createUserAndAssociatedWallet(inputVal.dlAddress)}
       disabled={!publicKey}
     >
       {isLoading ? "Loading" : "Create Associated Token Account"}
