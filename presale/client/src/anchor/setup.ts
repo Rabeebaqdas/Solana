@@ -32,4 +32,4 @@ export const [dlVault] = PublicKey.findProgramAddressSync(
 
 // This is just a TypeScript type for the Presale data structure based on the IDL
 // We need this so TypeScript doesn't yell at us
-export type PresaleData = IdlAccounts<Presale>["presale"];
+export type PresaleData = IdlAccounts<Presale>["preSaleDetails"];
