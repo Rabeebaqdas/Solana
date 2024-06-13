@@ -6,7 +6,7 @@ use anchor_spl::{
         burn, close_account, transfer, Burn, CloseAccount, Mint, Token, TokenAccount, Transfer,
     },
 };
-declare_id!("4b3Pp5Ea7b2Y9ot8y8SGXPMbmDGKB6u2jkMrw9UV5HqB");
+declare_id!("7y5yBiJ1Jv4dotxMciA4YKT2cE5oYLigtuwkhP1rXRJs");
 
 pub mod constants {
     pub const SOLANA_PRICE: u64 = 168000000000;
@@ -112,11 +112,17 @@ pub mod presale {
         info.round_two_price = round_two_price;
         info.round_three_price = round_three_price;
         info.owner = ctx.accounts.admin.key();
+        Ok(())
+    }
 
-        let total_amount_to_be_deposit = (round_one_allocation
-            .checked_add(round_two_allocation)
+    pub fn fund_pda(ctx: Context<InitializeTokenVault>) -> Result<()> {
+        let info: &mut Account<PreSaleDetails> = &mut ctx.accounts.presale_info;
+
+        let total_amount_to_be_deposit = (info
+            .round_one_allocation_remaining
+            .checked_add(info.round_two_allocation_remaining)
             .unwrap())
-        .checked_add(round_three_allocation)
+        .checked_add(info.round_three_allocation_remaining)
         .unwrap();
 
         //sending DL tokens into valut upon initialization
@@ -388,6 +394,25 @@ pub struct InitializePresale<'info> {
     )]
     usdc_vault: Account<'info, TokenAccount>,
 
+    mint_of_token_user_send: Account<'info, Mint>, // USDC
+
+    #[account(mut)]
+    admin: Signer<'info>, // The person who is initializing the presale
+
+    // Application level accounts
+    system_program: Program<'info, System>,
+    token_program: Program<'info, Token>,
+}
+#[derive(Accounts)]
+pub struct InitializeTokenVault<'info> {
+    // Derived PDAs
+    #[account(
+        mut,
+         seeds=[b"presale_info".as_ref()],
+         bump
+     )]
+    presale_info: Account<'info, PreSaleDetails>,
+
     #[account(
         init_if_needed,
         payer = admin,
@@ -398,7 +423,6 @@ pub struct InitializePresale<'info> {
     )]
     token_vault: Account<'info, TokenAccount>,
 
-    mint_of_token_user_send: Account<'info, Mint>, // USDC
     mint_of_token_program_sent: Account<'info, Mint>, // DL token
 
     #[account(
