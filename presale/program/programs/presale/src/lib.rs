@@ -6,7 +6,7 @@ use anchor_spl::{
         burn, close_account, transfer, Burn, CloseAccount, Mint, Token, TokenAccount, Transfer,
     },
 };
-declare_id!("HCXo1ZoY2ALW9dWDBjU1NfwHoaEEDsZ9g1FwrNfRC7GC");
+declare_id!("4b3Pp5Ea7b2Y9ot8y8SGXPMbmDGKB6u2jkMrw9UV5HqB");
 
 pub mod constants {
     pub const SOLANA_PRICE: u64 = 168000000000;

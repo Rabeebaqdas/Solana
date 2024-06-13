@@ -2,9 +2,10 @@
 seeds = false
 skip-lint = false
 [programs.localnet]
-presale = "HCXo1ZoY2ALW9dWDBjU1NfwHoaEEDsZ9g1FwrNfRC7GC"
+# presale = "HCXo1ZoY2ALW9dWDBjU1NfwHoaEEDsZ9g1FwrNfRC7GC"
+presale = "4b3Pp5Ea7b2Y9ot8y8SGXPMbmDGKB6u2jkMrw9UV5HqB"
 [programs.devnet]
-presale = "HCXo1ZoY2ALW9dWDBjU1NfwHoaEEDsZ9g1FwrNfRC7GC"
+presale = "4b3Pp5Ea7b2Y9ot8y8SGXPMbmDGKB6u2jkMrw9UV5HqB"
 
 [registry]
 url = "https://api.apr.dev"
