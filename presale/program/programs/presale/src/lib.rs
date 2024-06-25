@@ -372,6 +372,7 @@ impl Stage {
         }
     }
 }
+
 #[derive(Accounts)]
 pub struct InitializePresale<'info> {
     // Derived PDAs
@@ -439,6 +440,7 @@ pub struct InitializeTokenVault<'info> {
     system_program: Program<'info, System>,
     token_program: Program<'info, Token>,
 }
+
 #[derive(Accounts)]
 pub struct StartNextRound<'info> {
     // Derived PDAs
