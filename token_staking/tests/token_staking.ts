@@ -6,14 +6,11 @@ import {
   createMint,
   getOrCreateAssociatedTokenAccount,
   mintTo,
-  
 } from "@solana/spl-token";
 
-function sleep(ms:number) {
+function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
-
-
 
 describe("token_staking", () => {
   // Configure the client to use the local cluster.
@@ -78,17 +75,17 @@ describe("token_staking", () => {
       payer.publicKey
     );
 
-    // mint 10 tokens in the user's associated token account
+    // mint 100 tokens in the user's associated token account
     await mintTo(
       connection,
       payer.payer,
       mintKeyPair.publicKey,
       userTokenAccount.address,
       payer.publicKey,
-      1e11
+      1e12
     );
 
-    // sending funds in the vault to give rewards to users after making users associated accounts
+    // sending 1M tokens in the vault to give rewards to users after making users associated accounts
     await mintTo(
       connection,
       payer.payer,
@@ -121,9 +118,13 @@ describe("token_staking", () => {
       [Buffer.from("token"), payer.publicKey.toBuffer()],
       program.programId
     );
-    console.log('User Account Balance Before: ', (await connection.getTokenAccountBalance(userTokenAccount.address)).value.uiAmount);
+    console.log(
+      "User Account Balance Before: ",
+      (await connection.getTokenAccountBalance(userTokenAccount.address)).value
+        .uiAmount
+    );
     const tx = await program.methods
-      .stake(new anchor.BN(1000000000))
+      .stake(new anchor.BN(1e11), 1)
       .signers([payer.payer])
       .accounts({
         stakeInfoAccount: stakeInfo,
@@ -135,12 +136,10 @@ describe("token_staking", () => {
       .rpc();
     console.log("Your transaction signature", tx);
     // console.log('Stake Account Balance After: ', (await connection.getTokenAccountBalance(stakeAccount)).value.uiAmount);
-
-
   });
 
   it("Again Stake tokens!", async () => {
-    await sleep(1000);
+    await sleep(1000);  // 1 sec
     //making associated token account to hold the user's tokens
     let userTokenAccount = await getOrCreateAssociatedTokenAccount(
       connection,
@@ -163,7 +162,7 @@ describe("token_staking", () => {
     console.log('Stake Account Balance Before 2nd Stake: ', (await connection.getTokenAccountBalance(stakeAccount)).value.uiAmount);
 
     const tx = await program.methods
-      .stake(new anchor.BN(1000000000))
+      .stake(new anchor.BN(1e11), 1)
       .signers([payer.payer])
       .accounts({
         stakeInfoAccount: stakeInfo,
@@ -174,12 +173,12 @@ describe("token_staking", () => {
       })
       .rpc();
     console.log("Your transaction signature", tx);
-    console.log('Stake Account Balance After 2nd Stake: ', (await connection.getTokenAccountBalance(stakeAccount)).value.uiAmount);
+    // console.log('Stake Account Balance After 2nd Stake: ', (await connection.getTokenAccountBalance(stakeAccount)).value.uiAmount);
 
   });
 
   it("Claim Rewards", async () => {
-    await sleep(10000);
+    await sleep(11000);  // 11 secs
     let userTokenAccount = await getOrCreateAssociatedTokenAccount(
       connection,
       payer.payer,
@@ -228,12 +227,12 @@ describe("token_staking", () => {
       "Stake Account Info After:",
       (await program.account.stakeInfo.fetch(stakeInfo)).pendingRewards
       .toString());
-    console.log('Stake Account Balance After Claiming Rewards: ', (await connection.getTokenAccountBalance(stakeAccount)).value.uiAmount);
+    // console.log('Stake Account Balance After Claiming Rewards: ', (await connection.getTokenAccountBalance(stakeAccount)).value.uiAmount);
 
   });
 
   it("Unstake tokens!", async () => {
-    await sleep(10000);
+    await sleep(12000); // 12 secs
     let userTokenAccount = await getOrCreateAssociatedTokenAccount(
       connection,
       payer.payer,
@@ -258,7 +257,7 @@ describe("token_staking", () => {
     console.log('Stake Account Balance Before unstake: ', (await connection.getTokenAccountBalance(stakeAccount)).value.uiAmount);
 
     const tx = await program.methods
-      .unstake()
+      .unstake(new anchor.BN(2e11))
       .signers([payer.payer])
       .accounts({
         stakeInfoAccount: stakeInfo,
@@ -270,8 +269,7 @@ describe("token_staking", () => {
       })
       .rpc();
     console.log("Your transaction signature", tx);
-    console.log('Stake Account Balance After unstake: ', (await connection.getTokenAccountBalance(stakeAccount)).value.uiAmount);
-    console.log('User Account Balance After: ', (await connection.getTokenAccountBalance(userTokenAccount.address)).value.uiAmount);
+    // console.log('User Account Balance After: ', (await connection.getTokenAccountBalance(userTokenAccount.address)).value.uiAmount);
 
   });
 });
